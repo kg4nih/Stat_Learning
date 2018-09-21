@@ -17,6 +17,48 @@ Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by press
 When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file). 
 
 The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
-
+loading the library
+```{r}
+library(tidyverse)
+library(ISLR)
+library(MASS)
+```
 
 # Chapter 1 Introduction
+Just playing around here w/ R Markdown and code chunks
+
+```{r}
+data <- tibble(x = rnorm(50), y = rnorm(50))
+data %>% 
+ggplot(aes(x,y)) +
+  geom_point(alpha = 0.5, color = "red")
+```
+
+# Chapter 2 Applied 
+Read in College data from ISLR package
+
+```{r}
+# Reading the College data set as a tibble
+data("College")
+my_college <- as.tibble(College)
+my_college
+```
+
+```{r}
+# looking at summary stats for the variables
+my_college %>% 
+  summary()
+```
+```{r}
+# some plots
+my_college[1:10] %>% 
+  pairs()
+```
+
+```{r}
+# boxplot of Outstate foe Privata vs Public school
+my_college %>% 
+  ggplot(aes(x = Private, y = Outstate)) +
+  geom_boxplot()
+```
+
