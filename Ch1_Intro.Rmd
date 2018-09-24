@@ -62,7 +62,7 @@ my_college[1:10] %>%
 
 ## Problem 8.c.iii
 ```{r}
-# boxplot of Outstate foe Privata vs Public school
+# boxplot of Outstate for Privata vs Public school
 my_college %>% 
   ggplot(aes(x = Private, y = Outstate)) +
   geom_boxplot()
@@ -87,7 +87,7 @@ my_college %>%
 ```
 
 ```{r}
-# some histograms of various for 4 variables
+# some histograms and scatter plots
 # going to use grid.arrange() in the gridExtra library
 library(gridExtra)
 ```
@@ -120,5 +120,49 @@ p4 <- my_college %>%
 grid.arrange(p1, p2, p3, p4, ncol = 2)
 
 ```
+
+## Problem 9.a - 9.f
+```{r}
+# reading the Auto data set from the ISLR package and removing NAs
+data("Auto")
+my_auto <- as.tibble(drop_na(Auto))
+my_auto
+my_auto %>% 
+  summary()
+# select function in MASS can interfer with select function in dplyr. 
+# Needed to explicitly call dplyr::select
+table_out <- my_auto %>% 
+  dplyr::select(-name) %>% 
+   summarise_all(funs(min,max,mean,sd))
+table_out
+```
+```{r}
+# dropping rows 10 - 85 using a negative slice
+# and re-running summary
+my_auto %>% 
+  slice(-(10:85)) %>% 
+  summary()
+```
+```{r}
+# selecting rows 100:max raw
+x <- my_auto %>% nrow()
+my_auto %>% 
+  slice(100:x) %>% 
+  summary()        
+```
+```{r}
+# using the GGally package which is an add-on to ggplot to pairwise matrix plots. The progrees = FALSE supresses bars that indicate progress in
+# producing the plots
+library(GGally)
+```
+```{r}
+my_auto %>%
+   dplyr::select(-name) %>% 
+  ggpairs(progress = FALSE)
+```
+
+
+
+
 
 
