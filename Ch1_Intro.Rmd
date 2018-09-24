@@ -26,6 +26,7 @@ library(MASS)
 
 # Chapter 1 Introduction
 Just playing around here w/ R Markdown and code chunks
+I'm going to try and use the tidyverse package where I can. 
 
 ```{r}
 data <- tibble(x = rnorm(50), y = rnorm(50))
@@ -37,6 +38,7 @@ ggplot(aes(x,y)) +
 # Chapter 2 Applied 
 Read in College data from ISLR package
 
+## Problem 8.a & b
 ```{r}
 # Reading the College data set as a tibble
 data("College")
@@ -44,21 +46,79 @@ my_college <- as.tibble(College)
 my_college
 ```
 
+## Problem 8.c.i
 ```{r}
 # looking at summary stats for the variables
 my_college %>% 
   summary()
 ```
+
+## Problem 8.c.ii
 ```{r}
 # some plots
 my_college[1:10] %>% 
   pairs()
 ```
 
+## Problem 8.c.iii
 ```{r}
 # boxplot of Outstate foe Privata vs Public school
 my_college %>% 
   ggplot(aes(x = Private, y = Outstate)) +
   geom_boxplot()
 ```
+
+## Problem 8.c.iv
+```{r}
+# Creating a new variable "Elite" if more that 50% of their admissions were in the top 10 %
+# I'm creating Elite as a logical not a factor
+my_college <- my_college %>% 
+  mutate(Elite = if_else(Top10perc > 50, TRUE , FALSE))
+```
+```{r}
+my_college %>% 
+  summarise(num_Elite = sum(Elite), num_not_Elite = sum(!Elite), prop_Elite = mean(Elite), prop_not_Elite = mean(!Elite))
+```
+```{r}
+# creating a boxplot of Outstata for Elite vs non-Elite schools using "stat_boxplot"
+my_college %>% 
+  ggplot(aes(Elite, Outstate)) +
+  stat_boxplot()
+```
+
+```{r}
+# some histograms of various for 4 variables
+# going to use grid.arrange() in the gridExtra library
+library(gridExtra)
+```
+```{r}
+# making 2 histograms and 2 scatter plots
+p1 <- my_college %>% 
+  filter(Private == "Yes") %>% 
+  ggplot(aes(Apps)) +
+  geom_histogram(binwidth = 100, color = "black") +
+  labs(title = "Applications to Private Schools")
+
+p2 <-  my_college %>% 
+  filter(Private == "No") %>% 
+  ggplot(aes(Apps)) +
+  geom_histogram(binwidth = 100, color = "black") +
+  labs(title = "Applications to Public Schools")
+
+p3 <- my_college %>% 
+  filter(Private == "Yes") %>% 
+  ggplot(aes(Apps, Accept)) +
+  geom_point(alpha = 0.5) +
+  labs(title = "Applications vs Accepts for Private Schools")
+
+p4 <- my_college %>% 
+  filter(Private == "No") %>% 
+  ggplot(aes(Apps, Accept)) +
+  geom_point(alpha = 0.5) +
+  labs(title = "Applications vs Accepts for Public Schools")
+
+grid.arrange(p1, p2, p3, p4, ncol = 2)
+
+```
+
 
