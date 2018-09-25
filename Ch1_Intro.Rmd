@@ -161,8 +161,81 @@ my_auto %>%
   ggpairs(progress = FALSE)
 ```
 
+## Problem 10.a - 10.h
 
+```{r}
+# loading the Boston data set from the MASS library and omitting NAs
+data("Boston")
+?Boston
+my_boston <- as.tibble(drop_na(Boston))
+glimpse(my_boston)
+```
+```{r}
+# looking at some basic summary stats
+my_boston %>% 
+  summary()
+```
+```{r}
+# doing pairwise plots using ggpairs
+my_boston %>% 
+  ggpairs(progress = FALSE)
+```
 
+```{r}
+# filtering to find suburbs that bound the Charles River
+my_boston %>% 
+  filter(chas == 1) %>% 
+  count()
+```
+```{r}
+# median pupil-teacher ratio
+my_boston %>% 
+  dplyr::select(ptratio) %>% 
+  summary()
+```
+```{r}
+# lowest median value of owner occupied homes
+lowest_median <- my_boston %>% 
+  filter(medv == min(medv))
+summary(lowest_median)
+```
 
+```{r}
+# building some plot to compare crime in lowest_median to my_boston
+# note that there are onlt 2 data point in lowest_median so not very interesing plots
+lm_c <- lowest_median %>% 
+  ggplot(aes(crim)) +
+  geom_histogram(binwidth = 1, color = "black") +
+  labs(title = "Crime Rate in Lowest Median Value")
+lm_b <- lowest_median %>% 
+  ggplot(aes(black)) +
+  geom_histogram(binwidth = 1, color = "black") +
+  labs(title = "Black propostion in Lowest Median Value")
+lm_s <- lowest_median %>% 
+  ggplot(aes(crim,black)) +
+  geom_point(alpha = 0.5)
+
+grid.arrange(lm_c, lm_b, lm_s,nrow = 3)
+```
+
+```{r}
+# using filter to find suburbs w/ more, on average, more than 7 rooms and more than eight room per
+# dwelling
+my_boston %>% 
+  filter(rm  > 7) %>% 
+  nrow()
+my_boston %>% 
+  filter(rm > 7) %>% 
+  summary()
+```
+```{r}
+my_boston %>% 
+  filter(rm > 8) %>% 
+  nrow()
+
+my_boston %>% 
+  filter(rm > 8) %>% 
+  summary()
+```
 
 
