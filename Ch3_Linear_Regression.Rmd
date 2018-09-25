@@ -1,0 +1,61 @@
+---
+title: "Ch3_Linear_Regression"
+author: "G Smith"
+date: "September 25, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Chapter 3 Linear Regression
+
+My notes and worked examples for linear regression.
+
+```{r}
+# Loading my standard work environment libraries and the ISLR library
+library(tidyverse)
+library(broom)
+library(gridExtra)
+library(GGally)
+library(knitr)
+library(ISLR)
+```
+## 3.6 Lab: Linear Regression
+
+3.6.1 Libraries
+
+```{r}
+# ISLR is already laoded
+# Loading MASS library
+# Note that the MASS library may mess-up the dplry select() function
+# I'm also practicing using tibbies, ggplot and the broom packages
+library(MASS)
+library(dplyr)
+# this was a recommended solution; define select to be the dplyr select() function
+select <- dplyr::select
+```
+
+```{r}
+# loading Boston data set
+data(Boston)
+attach(Boston)
+```
+```{r}
+# creating first LM and playing w/ making it tidy
+lm.fit <- Boston %>% 
+  lm(medv~lstat, data = .)
+# looking at the broom functions
+tidy(lm.fit, conf.int = TRUE)
+
+```
+
+```{r}
+augment(lm.fit)
+```
+```{r}
+glance(lm.fit)
+```
+
+
