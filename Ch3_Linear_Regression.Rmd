@@ -35,6 +35,7 @@ library(MASS)
 library(dplyr)
 # this was a recommended solution; define select to be the dplyr select() function
 select <- dplyr::select
+rename <- dplyr::rename
 ```
 
 ```{r}
@@ -47,15 +48,52 @@ attach(Boston)
 lm.fit <- Boston %>% 
   lm(medv~lstat, data = .)
 # looking at the broom functions
-tidy(lm.fit, conf.int = TRUE)
-
+lm.fit.tidy <- tidy(lm.fit, conf.int = TRUE, conf.level = .95)
+lm.fit.tidy
 ```
 
 ```{r}
-augment(lm.fit)
+names(lm.fit.tidy)
+```
+
+```{r}
+lm.fit.aug <- augment(lm.fit)
+lm.fit.aug
+```
+
+```{r}
+lm.fit.gla <- glance(lm.fit)
+lm.fit.gla
 ```
 ```{r}
-glance(lm.fit)
+# using the predict() function
+# first build a vector of predictor values
+lstat.p <- c(1:30)
+# run predict() for p_hat and confidence intervals
+# the data.frame() is importatant
+lm.fit.p_hat <- predict(lm.fit, data.frame(lstat = lstat.p), interval = "confidence")
+lm.fit.p_hat
+# tidy p_hat and lstat.p by making them into tibbles
+lstat.p <- as.tibble(lstat.p)
+lm.fit.p_hat <- as.tibble(lm.fit.p_hat)
+# place the predictor values in the p_hat tibble and rename value as lstat
+lm.fit.p_hat <- bind_cols(lstat.p,lm.fit.p_hat)
+lm.fit.p_hat <- lm.fit.p_hat %>% 
+  rename(lstat = value, medv = fit)
+lm.fit.p_hat
+```
+```{r}
+# plotting the fitted value for medv vs lstat with lower and upper conf intervals
+lm.fit.p_hat %>% 
+  ggplot(aes(lstat, medv, ymin = lwr, ymax = upr)) +
+  geom_errorbar()
+```
+```{r}
+# and now plotting with geom_smooth
+lm.fit.p_hat %>% 
+  ggplot(aes(lstat, medv, ymin = lwr, ymax = upr)) +
+  geom_smooth(method = lm) + 
+  geom_errorbar()
 ```
 
 
