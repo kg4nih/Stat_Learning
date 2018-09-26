@@ -41,8 +41,11 @@ rename <- dplyr::rename
 ```{r}
 # loading Boston data set
 data(Boston)
+head(Boston)
 attach(Boston)
 ```
+## 3.6.2 Simple Linear Regression
+
 ```{r}
 # creating first LM and playing w/ making it tidy
 lm.fit <- Boston %>% 
@@ -94,6 +97,32 @@ lm.fit.p_hat %>%
   ggplot(aes(lstat, medv, ymin = lwr, ymax = upr)) +
   geom_smooth(method = lm) + 
   geom_errorbar()
+```
+```{r}
+# using ggplot isn't as easy as using the basic abline(lm.fit) call
+# some more plottiong using ggplot
+# need to get the intercept and slope from lm.fit.tidy
+intercept = pull(lm.fit.tidy[1,2])
+slope = pull(lm.fit.tidy[2,2])
+# plot lstat vs medv and add abline
+Boston %>% 
+  ggplot(aes(lstat,medv)) +
+  geom_point(alpha = 0.5, color = "red") +
+  geom_abline(aes(intercept = intercept, slope = slope))
+```
+```{r}
+# plot(predict(lm.fit), residuals(lm.fit)) is more direct
+# than using ggplot
+pred <- as.tibble(predict(lm.fit))
+pred <- pred %>% 
+  rename(pred = value)
+resid <- as.tibble(residuals(lm.fit))
+resid <-  resid %>%
+  rename(resid = value)
+tab <- bind_cols(pred,resid)
+tab %>% 
+ggplot(aes(pred, resid)) + 
+  geom_point(alpha = 0.5)
 ```
 
 
