@@ -124,5 +124,19 @@ tab %>%
 ggplot(aes(pred, resid)) + 
   geom_point(alpha = 0.5)
 ```
-
-
+```{r}
+# using the broom augmented results lm.fit.aug
+# this is a lot easier taht the above!
+lm.fit.aug %>% 
+  ggplot(aes(.fitted, .resid)) +
+  geom_point(alpha = 0.5)
+```
+```{r}
+# plotting .hat (leverage) values and determining the observation w/ the largest leverage
+# the challege is defining an index value. My solution is 1:nrow()
+max_leverage <- tibble(c(which.max(lm.fit.aug$.hat),max(lm.fit.aug$.hat)))
+max_leverage
+lm.fit.aug %>% 
+  ggplot(aes(1:nrow(lm.fit.aug),.hat)) +
+  geom_point(alpha = 0.5)
+```
