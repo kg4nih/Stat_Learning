@@ -304,3 +304,74 @@ lm.fit.eth %>%
   glance()
 ```
 #### very low F-stat = 0.043 and very high p.value. Cannot reject the null hypothesis Ho: B1 = B2 = 0
+
+## 3.3.2 Extensions of the Linear Model
+
+# Removing the Additive Assumption - Interactions
+```{r}
+# building a model that has an interaction
+lm.fit.inter <- Advertising %>% 
+                lm(sales ~ TV + radio + TV*radio, data =.)
+lm.fit.inter.tidy <- tidy(lm.fit.inter, conf.int = TRUE, conf.level = TRUE)
+lm.fit.inter.tidy
+```
+```{r}
+lm.fit.inter.aug <- augment(lm.fit.inter)
+lm.fit.inter.aug
+```
+```{r}
+# checking the F-Stat of the model
+glance(lm.fit.inter)
+```
+strong R^2 and very high F-stat. Can reject (fail to accept) the null Ho: B1 = B2 = B3 = 0
+```{r}
+# a plot of fitted vs residuals
+lm.fit.inter.aug %>% 
+  ggplot(aes(.fitted, .resid)) +
+  geom_point(alpha = 0.5)
+```
+a little droopy at the left end.
+```{r}
+# looking for high leverage points
+lm.fit.inter.aug %>% 
+  ggplot(aes(1:nrow(lm.fit.inter.aug),.hat)) +
+  geom_point(alpha = 0.5)
+```
+looks like one high leverage point; lets find it
+```{r}
+lm.fit.inter.aug %>% 
+  filter(.hat == max(.hat))
+```
+```{r}
+# removing the high leverage point and rerunning the model
+lm.fit.inter.2 <- lm.fit.inter.aug %>% 
+  filter(.hat != max(.hat)) %>% 
+  lm(sales ~ TV + radio + TV*radio, data = .)
+glance(lm.fit.inter.2)
+```
+
+```{r}
+# looking for high leverage points
+lm.fit.inter.2.aug <- augment(lm.fit.inter.2)
+lm.fit.inter.2.aug %>% 
+  ggplot(aes(1:nrow(lm.fit.inter.2.aug),.hat)) +
+  geom_point(alpha = 0.5)
+```
+```{r}
+# tidy the model results
+tidy(lm.fit.inter.2, conf.int = TRUE, conf.level = 0.95)
+```
+not a big difference in the model results by removing the high leverage point
+```{r}
+# fitting a model w/ a quantitatve and qualitative variable
+lm.fit.balance.2 <- Credit %>% 
+                  lm(Balance ~ Income + Student, data = .)
+tidy(lm.fit.balance.2, conf.int = TRUE, conf.level = 0.95)
+```
+```{r}
+# fitting a model w/ a quantitative and qualitative variables and an inreaction
+lm.fit.balance.3 <- Credit %>% 
+                    lm(Balance ~ Income + Student + Income*Student, data = .)
+tidy(lm.fit.balance.3, conf.int = TRUE, conf.level = 0.95)
+```
+
