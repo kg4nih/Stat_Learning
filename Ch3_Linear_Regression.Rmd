@@ -281,5 +281,26 @@ Credit %>%
   select(-ID) %>% 
   ggpairs(progress = FALSE)
 ```
-
-
+```{r}
+# a linear regression w/ a qualitative variable w/ 2 levels
+lm.fit.gen <- Credit %>% 
+  lm(Balance ~ Gender, data =.)
+lm.fit.gen.tidy <- tidy(lm.fit.gen, conf.int = TRUE, conf.level = 0.95)
+lm.fit.gen.tidy
+```
+#### There doesn't seem to be a strong relationship between gender and credit card balance. t-stat = 0.4285 w/ p.value = .6685; can't reject the null Ho: B1 = 0
+```{r}
+# linear regression w/ a qualitative variable w/ 3 levels
+# the lm() automatically generates the dummy variables, so no need to create them
+lm.fit.eth <- Credit %>% 
+  lm(Balance ~ Ethnicity, data = .)
+lm.fit.eth.tidy <- tidy(lm.fit.eth, conf.int = TRUE, conf.level = 0.95)
+lm.fit.eth.tidy
+```
+```{r}
+# there doesn't appear to be a strong relationship between enthnicity and balace
+# using glance() to check the model stats
+lm.fit.eth %>% 
+  glance()
+```
+#### very low F-stat = 0.043 and very high p.value. Cannot reject the null hypothesis Ho: B1 = B2 = 0
