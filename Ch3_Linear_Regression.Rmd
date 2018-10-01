@@ -15,12 +15,13 @@ My notes and worked examples for linear regression.
 
 ```{r}
 # Loading my standard work environment libraries and the ISLR library
-library(tidyverse)
 library(broom)
 library(gridExtra)
 library(GGally)
 library(knitr)
 library(ISLR)
+library(car)
+library(tidyverse)
 ```
 ## 3.6 Lab: Linear Regression
 
@@ -54,6 +55,10 @@ lm.fit <- Boston %>%
 lm.fit.tidy <- tidy(lm.fit, conf.int = TRUE, conf.level = .95)
 lm.fit.tidy
 ```
+```{r}
+nrow(lm.fit.tidy)
+```
+
 
 ```{r}
 names(lm.fit.tidy)
@@ -100,6 +105,17 @@ lm.fit.p_hat %>%
   geom_errorbar()
 ```
 ```{r}
+# using plot() and abline() om the lm.fit model
+# produces 4 diagnostic plots
+par(mfrow=c(2,2))
+plot(lm.fit)
+```
+```{r}
+par(mfrow=c(1,1))
+plot(hatvalues(lm.fit))
+```
+
+```{r}
 # using ggplot isn't as easy as using the basic abline(lm.fit) call
 # some more plottiong using ggplot
 # need to get the intercept and slope from lm.fit.tidy
@@ -130,17 +146,128 @@ ggplot(aes(pred, resid)) +
 # this is a lot easier than the above!
 lm.fit.aug %>% 
   ggplot(aes(.fitted, .resid)) +
-  geom_point(alpha = 0.5)
+  geom_point(alpha = 0.5) +
+  geom_smooth(color = "red", se = FALSE) +
+  geom_hline(aes(yintercept = 0))
 ```
+looks like there's some non-linearity. 
 ```{r}
+# looking for outliers using studentized reiduals
+lm.fit.aug
+lm.fit.aug %>% 
+  ggplot(aes(.fitted, .resid/.sigma)) +
+  geom_point(alpha = 0.5) +
+  geom_hline(yintercept = 3, color = "red") +
+  geom_hline(yintercept = -3, color = "red")
+```
+Note several potential outliers above +3. But that's probably because the residuals show a clear pattern and the model isn't an especially good fit
+
+```{r}
+# looking for high-leverage points
 # plotting .hat (leverage) values and determining the observation w/ the largest leverage
-# the challege is defining an index value. My solution is 1:nrow()
+# 
 max_leverage <- lm.fit.aug %>% filter(.hat == max(.hat))
 max_leverage
-lm.fit.aug %>% 
-  ggplot(aes(1:nrow(lm.fit.aug),.hat)) +
+max_cooks <- lm.fit.aug %>% filter(.cooksd == max(.cooksd))
+max_cooks
+lm.fit.aug %>%
+  ggplot(aes(.hat, .resid/.sigma)) +
   geom_point(alpha = 0.5) +
-  annotate("text", x = 375-50, y = 0.0268517, label = "max leverage",color = "red")
+  geom_hline(yintercept = 0, color = "grey") +
+  geom_hline(yintercept = 3, color = "red") +
+  geom_hline(yintercept = -3, color = "red") 
+```
+```{r}
+# Cooks Distance - another way of looking for high leverage points
+# chisq() is used as kind of a cut-off for IDing potential problem points
+# nrow() gets the p+1 from the model
+lm.fit.aug %>%
+  ggplot(aes(x = 1:nrow(lm.fit.aug), y = .cooksd)) +
+  geom_point(alpha = 0.5) +
+  geom_hline(yintercept = qchisq(0.1,nrow(lm.fit.tidy))/2, color = "red") 
+  
+```
+
+### 3.6.3 Multiple Linear Regression
+```{r}
+lm.fit <- lm(medv ~ lstat + age, data = Boston)
+summary(lm.fit)
+```
+```{r}
+lm.fit <- lm(medv ~ ., data = Boston)
+summary(lm.fit)
+```
+```{r}
+tidy(lm.fit, conf.int = TRUE, conf.level = .95)
+```
+indus and age have high p.values and conf.int contains 0. Indicates that can't reject Ho: B(indus) and B(age) = 0, consider removing from model
+```{r}
+glance(lm.fit)
+```
+stron r.squared and F-stat = 108.08, very low p.value
+```{r}
+vif(lm.fit)
+vif(lm.fit) >= 5
+```
+VIF for rad and tax above 5. high multi-collinearity. consider removing from model
+```{r}
+# basic diagnositc plots
+par(mfrow=c(2,2))
+plot(lm.fit)
+```
+```{r}
+# updating the model by removing indus, age & rad
+lm.fit.1 <- update(lm.fit, ~. - indus - age - rad)
+summary(lm.fit.1)
+```
+```{r}
+par(mfrow = c(2,2))
+plot(lm.fit.1)
+```
+```{r}
+vif(lm.fit.1) > 5
+```
+```{r}
+anova(lm.fit, lm.fit.1)
+```
+
+### 3.6.4 Interaction Terms
+
+```{r}
+# these are the same models
+# lm(medv ~ lstat + age + lstat:age, data = Boston) is medv ~ lstat + age + lstat x age
+# medv ~ lstat * age is short-hand for medv ~ lstat + age + lstat x age
+ lm.fit.2 <-  lm(medv ~ lstat * age, data = Boston)
+ summary(lm.fit.2)
+```
+```{r}
+par(mfrow = c(2,2))
+plot(lm.fit.2)
+```
+note that the Cooks Distance for observation is above 1. 
+```{r}
+vif(lm.fit.2)
+```
+VIF is high for lstat. Expect a high VIF for an interaction term
+
+### 3.6.5 Non-linear Transformations of the Predictors
+```{r}
+lm.fit.3 <- lm(medv ~ lstat + I(lstat^2))
+summary(lm.fit.3)
+```
+```{r}
+par(mfrow = c(2,2))
+plot(lm.fit.3)
+```
+```{r}
+# higher order polynomials using poly(); in this case a 7th order polynomial
+lm.fit.4 <-  lm(medv ~ poly(lstat, 7))
+summary(lm.fit.4)
+```
+Note that the 6th and 7th poly aren't significant. Also, high order poly is probably overfitting
+```{r}
+par(mfrow = c(2,2))
+plot(lm.fit.4)
 ```
 
 ## 3.1 Simple Linear Regression
@@ -208,9 +335,11 @@ lm.fit.tv.aug %>%
 # plot fitted vs residuals
 lm.fit.tv.aug %>% 
   ggplot(aes(.fitted, .resid)) +
-  geom_point(alpha = 0.5)
+  geom_point(alpha = 0.5) +
+  geom_smooth(color = "red", se = FALSE) +
+  geom_hline(aes(yintercept = 0))
 ```
-Confirms that residuals are cone shaped. 
+Looks linear. But the residuals are cone shaped: non-constant variance in error terms. could try lm(log(sales ~ TV))
 ```{r}
 # plot of sales vs fitted
 lm.fit.tv.aug %>% 
@@ -218,11 +347,23 @@ lm.fit.tv.aug %>%
   geom_point(alpha = 0.5)
 ```
 ```{r}
-# looking for high leverage points
+# looking for high leverage points; plotting studentized residuals vs .hat (leverage); cutoff is |3| 
 lm.fit.tv.aug %>% 
-  ggplot(aes(1:nrow(lm.fit.tv.aug),.hat)) +
-  geom_point(alpha = 0.5)
+  ggplot(aes(.hat, .resid/.sigma)) +
+  geom_point(alpha = 0.5) +
+  geom_hline(yintercept = 3, color = "red") +
+  geom_hline(yintercept = -3, color = "red")
 ```
+```{r}
+# high leverage points w/ Cooks Distance
+# chisq() is used as kind of a cut-off for IDing potential problem points
+# nrow() gets the p+1 from the model
+lm.fit.tv.aug %>%
+  ggplot(aes(x = 1:nrow(lm.fit.tv.aug), y = .cooksd)) +
+  geom_point(alpha = 0.5) +
+  geom_hline(yintercept = qchisq(0.1,nrow(lm.fit.tv.tidy))/2, color = "red") 
+```
+
 No apparent high leverage points
 ```{r}
 # calculating r2 by hand just for practice
@@ -239,6 +380,10 @@ r2
 # regressing sales on TV, radio, newspaper
 lm.fit.mult <- Advertising %>% 
                 lm(sales ~ TV + radio + newspaper, data = .)
+# Collinearity test using VIF from "car" package
+vif(lm.fit.mult)
+sqrt(vif(lm.fit.mult)) > 2
+
 summary(lm.fit.mult)
 lm.fit.mult.tidy <- tidy(lm.fit.mult, conf.int = TRUE, conf.level = .95)
 lm.fit.mult.aug <- augment(lm.fit.mult)
@@ -328,24 +473,40 @@ strong R^2 and very high F-stat. Can reject (fail to accept) the null Ho: B1 = B
 # a plot of fitted vs residuals
 lm.fit.inter.aug %>% 
   ggplot(aes(.fitted, .resid)) +
-  geom_point(alpha = 0.5)
+  geom_point(alpha = 0.5) +
+  geom_smooth(color = "red", se = FALSE) +
+  geom_hline(aes(yintercept = 0))
 ```
-a little droopy at the left end.
+a little droopy at the left end; suggest some, but not really bad, non-linearity
 ```{r}
 # looking for high leverage points
 lm.fit.inter.aug %>% 
-  ggplot(aes(1:nrow(lm.fit.inter.aug),.hat)) +
-  geom_point(alpha = 0.5)
+  ggplot(aes(.hat, .resid/.sigma)) +
+  geom_point(alpha = 0.5)+
+  geom_hline(yintercept = 3, color = "red") +
+  geom_hline(yintercept = -3, color = "red")
 ```
-looks like one high leverage point; lets find it
+looks like two high leverage points outside |3| lets find them 
+`# high leverage points w/ Cooks Distance
+```{r}
+# chisq() is used as kind of a cut-off for IDing potential problem points
+# nrow() gets the p+1 from the model
+lm.fit.inter.aug            
+lm.fit.inter.aug %>%
+  ggplot(aes(x = 1:nrow(lm.fit.inter.aug), y = .cooksd)) +
+  geom_point(alpha = 0.5) +
+  geom_hline(yintercept = qf(0.5,nrow(lm.fit.inter.tidy),nrow(lm.fit.inter.aug) - nrow(lm.fit.inter.tidy)), color = "red")
+```
+Cooks' Distance shows one borderline high leverage point 
+
 ```{r}
 lm.fit.inter.aug %>% 
-  filter(.hat == max(.hat))
+  filter(.resid/.sigma < -3)
 ```
 ```{r}
-# removing the high leverage point and rerunning the model
+# removing the high leverage points (any outside |3|) and rerunning the model
 lm.fit.inter.2 <- lm.fit.inter.aug %>% 
-  filter(.hat != max(.hat)) %>% 
+  filter(.resid/.sigma <=3 & .resid/.sigma >= -3) %>% 
   lm(sales ~ TV + radio + TV*radio, data = .)
 glance(lm.fit.inter.2)
 ```
@@ -354,14 +515,34 @@ glance(lm.fit.inter.2)
 # looking for high leverage points
 lm.fit.inter.2.aug <- augment(lm.fit.inter.2)
 lm.fit.inter.2.aug %>% 
-  ggplot(aes(1:nrow(lm.fit.inter.2.aug),.hat)) +
-  geom_point(alpha = 0.5)
+  ggplot(aes(.hat, .resid/.sigma)) +
+  geom_point(alpha = 0.5) +
+  geom_hline(yintercept = 3, color = "red") +
+  geom_hline(yintercept = -3, color = "red")
+  
 ```
+So, it seems that there are NEW "high leverage"" points. 
+```{r}
+lm.fit.inter.3 <- lm.fit.inter.2.aug %>% 
+  filter(.resid/.sigma <=3 & .resid/.sigma >= -3) %>% 
+  lm(sales ~ TV + radio + TV*radio, data = .)
+glance(lm.fit.inter.3)
+```
+```{r}
+# looking for high leverage points
+lm.fit.inter.3.aug <- augment(lm.fit.inter.3)
+lm.fit.inter.3.aug %>% 
+  ggplot(aes(.hat, .resid/.sigma)) +
+  geom_point(alpha = 0.5) +
+  geom_hline(yintercept = 3, color = "red") +
+  geom_hline(yintercept = -3, color = "red")
+```
+
 ```{r}
 # tidy the model results
 tidy(lm.fit.inter.2, conf.int = TRUE, conf.level = 0.95)
 ```
-not a big difference in the model results by removing the high leverage point
+not a big difference in the model results by removing the high leverage points
 ```{r}
 # fitting a model w/ a quantitatve and qualitative variable
 lm.fit.balance.2 <- Credit %>% 
@@ -375,3 +556,132 @@ lm.fit.balance.3 <- Credit %>%
 tidy(lm.fit.balance.3, conf.int = TRUE, conf.level = 0.95)
 ```
 
+### 3.3.3 Potential Problems
+
+#### Non-linearity
+
+An example using the Auto data set
+```{r}
+data(Auto)
+Auto <- as.tibble(Auto)
+Auto
+```
+```{r}
+# fitting a lm() w/ a 1st degree poly
+lm.fit.hp <- Auto %>% 
+            lm(mpg ~ horsepower, data = .)
+lm.fit.hp.tidy <- tidy(lm.fit.hp, conf.int = TRUE, conf.level = 0.95)
+lm.fit.hp.tidy
+```
+```{r}
+glance(lm.fit.hp)
+```
+High r.squared and low p.value can reject (fail to accept) Ho: B1 = 0
+```{r}
+# plotting fitted vs residuals
+lm.fit.hp.aug <- augment(lm.fit.hp)
+lm.fit.hp.aug %>% 
+  ggplot(aes(.fitted, .resid)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(color = "red", se = FALSE) +
+  geom_hline(aes(yintercept = 0))
+```
+strong pattern in residuals suggests non-linearity
+
+```{r}
+# fitting a lm() with a 1st & 2nd degree poly. Note using the poly() causes problems w/ augment(). 
+# need to use I()
+lm.fit.hp2 <- Auto %>% 
+              lm(log10(mpg) ~ horsepower + I(horsepower^2), data = .)
+lm.fit.hp2.tidy <- tidy(lm.fit.hp2, conf.int = TRUE, conf.level = 0.95)
+lm.fit.hp2.tidy
+```
+very low p.value for hp and hp^2
+```{r}
+glance(lm.fit.hp2)
+```
+r.squared has increase from .6059 w/ just the linear term for hp to .6876 w/ th inclusion of hp^2 term
+very low p.value so reject (fail to accept) Ho: B1 = B2 = 0
+
+#### Non-constant Variance of Error Terms
+
+```{r}
+# plotting the .fitted vs .resid for the quadradic model mpg ~ hp + hp^2
+lm.fit.hp2.aug <- augment(lm.fit.hp2)
+lm.fit.hp2.aug %>% 
+  ggplot(aes(.fitted, .resid)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(color = "red", se = FALSE) +
+  geom_hline(aes(yintercept = 0)) +
+  xlab("Fitted Log10 of MPG") +
+  ggtitle("Log10 MPG ~ Horsepower + Horsepower^2")
+```
+very litte pattern to residuals by including hp and hp^2 in the model. Still looked like there was some non-constant variance of error terms
+So, I re-did the model log10(mpg) ~ hp + hp^2
+
+#### Correlation of Error Terms
+```{r}
+# here I'm checking for correlation of error terms by plottig .resid vs the observation .rownames
+# I didn't expact a pattern/tracking to emerge since, for example, the observations were not from a time series.
+# It was just practice
+lm.fit.hp2.aug
+lm.fit.hp2.aug %>% 
+  ggplot(aes(x = .rownames, y = .resid)) +
+  geom_point(alpha = 0.5)
+```
+
+#### Outliers - points y that are far from the value predicted by the model
+Can check for outliers by a basic plot OR by plotting the "studentized residuals vs the fitted values. Consider removing observation outside |3|
+```{r}
+lm.fit.hp2.aug
+lm.fit.hp2.aug %>%
+  mutate(studres = .resid/.sigma) %>% 
+  ggplot(aes(x = .fitted, y = studres)) +
+  geom_point(alpha = 0.5) +
+  geom_hline(yintercept = 3, color = "red") +
+  geom_hline(yintercept = -3, color = "red")
+```
+Looks like 2 outlier observations that should be considered for removed and the model rerun 
+
+#### High Leverage Points - observations where the predictor variable has unusually low or high values compared compared to the others
+```{r}
+# Using Cood's D and F(0.5,p,n-p) as cutoff line. p is the number of model parameters including the intercept. n is the number of observations
+n <- nrow(lm.fit.hp2.aug)
+p <-  nrow(lm.fit.hp2.tidy)
+lm.fit.hp2.aug %>%
+  ggplot(aes(x = 1:nrow(lm.fit.hp2.aug), .cooksd)) +
+  geom_point(alpha = 0.5) +
+  geom_hline(yintercept = qf(0.5,p,n - p), color = "red")
+```
+
+Plot of Cooks' Distance doesn't show any high leverage points
+
+#### Collinearity of Predictors - two or more predictor valiables are closely related to one another.
+
+High levels of collinearity results in a decline in the t-statistic. as a result, may we (accept) fail to reject Ho: Bj = 0 when we should. Therefore the "power" (the probability of detecting a "non-zero" coefficient is reduced by collinearity! 
+Variance Inflation Factor (VIF) can be used to assess "multi-collinearity" between 2 or more variables. Min VIF = 1, cutoff is usually a VIF 5 or above
+```{r}
+# Evaluate Multi-collinearity - 
+Credit
+lm.fit.mod1 <- Credit %>% 
+               lm(Balance ~ Age + Limit, data = .)
+summary(lm.fit.mod1)
+```
+High t-stats and low p.value for all coefficients. Fail to accept (that is reject) Ho: B1 = B2 = 0 
+```{r}
+vif(lm.fit.mod1) # variance inflation factors 
+```
+ VIF indicates no problem w/ multi-colinearity 
+```{r}
+# including "Rating" in the model; known to have a high correlaion w/ "Limit". Also "Student"
+ lm.fit.mod2 <- Credit %>% 
+              lm(Balance ~ Age + Limit + Rating + Student, data = .)
+summary(lm.fit.mod2)
+```
+High collinearity between Limit and Rating results in low t-stats for both. Would fail to reject (that is accept) Ho: B1 = B2 = 0
+
+```{r}
+# Checking VIF
+vif(lm.fit.mod2)
+```
+Very high VIFs (160+) for Limit and Age. Should remove one from the model
