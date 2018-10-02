@@ -309,7 +309,77 @@ fit_out %>%
     geom_line(aes(x,y2), color = "blue", linetype = "dashed") +
     geom_line(aes(x,y9), color = "darkgreen", linetype = "dashed")
 ```
+```{r}
+# fixing a set x = .9 and running 500 simulations for each of the 5 models to estimate bias, variance and MSE for each model at x = .9
+set.seed(1)
+n_sims <- 500
+n_models <- 5
+x <- tibble(x = .9)
+# blank matrix to hold results
+predictions <- matrix(0, nrow = n_sims, ncol = n_models)
+# # run the simulations
+for(sim in 1:n_sims) {
+  sim_data <- get_sim_data(f) # generating a new data set for each simulation
+# fitting each model
+  fit_0 <- lm(y ~ 1,                   data = sim_data)
+  fit_1 <- lm(y ~ poly(x, degree = 1), data = sim_data)
+  fit_2 <- lm(y ~ poly(x, degree = 2), data = sim_data)
+  fit_3 <- lm(y ~ poly(x, degree = 3), data = sim_data)
+  fit_9 <-  lm(y ~ poly(x, degree = 9), data = sim_data)
+# getting each model's predictions for each simulation
+  predictions[sim,1] <- predict(fit_0, x)
+  predictions[sim,2] <- predict(fit_1, x)
+  predictions[sim,3] <- predict(fit_2, x)
+  predictions[sim,4] <- predict(fit_3, x)
+  predictions[sim,5] <- predict(fit_9, x)
+}
+fit.out.2 <- as.tibble(predictions)
+fit.out.2 <- fit.out.2 %>% 
+                rename(P0 = V1, P1 = V2, P2 = V3, P3 = V4, P9 = V5)
+fit.out.2
+```
+```{r}
+# making a boxplot of the results
+fit.out.2 %>%  
+  ggplot() +
+  geom_boxplot(aes(x = 0, y = P0, middle = mean(P0))) +
+  geom_jitter(aes(x = 0, y = P0), width = 0.15, height = 0, color = "blue", alpha = 0.25) +
+  geom_boxplot(aes(x = 1, y = P1, middle = mean(P1))) +
+  geom_jitter(aes(x = 1, y = P1), width = 0.15, height = 0,color = "red", alpha = 0.25) +
+  geom_boxplot(aes(x = 2, y = P2, middle = mean(P2))) +
+  geom_jitter(aes(x = 2, y = P2), width = 0.15, height = 0,color = "green", alpha = 0.25)+
+  geom_boxplot(aes(x = 3, y = P3, middle = mean(P9))) +
+  geom_jitter(aes(x = 3, y = P3), width = 0.15, height = 0,color = "orange", alpha = 0.25) +
+  geom_boxplot(aes(x = 4, y = P9, middle = mean(P9))) +
+  geom_jitter(aes(x = 4, y = P9), width = 0.15, height = 0,color = "dark green", alpha = 0.25) +
+  geom_hline(yintercept = .9^2) +
+  scale_x_continuous(breaks = c(0,1,2,3,4), labels = c("0","1","2","3","9")) +
+  labs(x = "Polynomial Degree", y = "Predictions")
+```
+Note that as model complexity increases that bias decreases (the model's mean is closer to the true f(x) = x^2), but variance (about the model's mean) increases. Specifically note that a 2nd degree polynomial visually has "best" combination of bias and variance.
 
+```{r}
+b_v_results <- fit.out.2 %>% 
+  summarise_all(funs(bias_2 = (mean(.) - f(x = 0.90))^2, var = var(.)))
+mse_table <- b_v_results %>% 
+             mutate(P0_mse = P0_bias_2 + P0_var, P1_mse = P1_bias_2 + P1_var, P2_mse = P2_bias_2 + P2_var, P3_mse = P3_bias_2 + P3_var, P9_mse = P9_bias_2 + P9_var)
+
+mse_table
+mse_table %>% 
+  select(ends_with("mse"))
+```
+```{r}
+fit_0 <- glance(lm(y ~ 1,                   data = sim_data))
+fit_1 <- glance(lm(y ~ poly(x, degree = 1), data = sim_data))
+fit_2 <- glance(lm(y ~ poly(x, degree = 2), data = sim_data))
+fit_3 <- glance(lm(y ~ poly(x, degree = 3), data = sim_data))
+fit_9 <- glance(lm(y ~ poly(x, degree = 9), data = sim_data))
+
+combined <- bind_rows(fit_0,fit_1,fit_2,fit_3,fit_9)
+combined <- bind_cols(Poly = c("0","1","2","3","9"), combined)
+combined
+```
+Based on the models' mse and the F-Stat on the simulated training sets, good model choices would be linear, quad, or cubic. R^2 will always increase (or at least not decrease) as predictors are added. Remember - we don't know the true underling function f(x) = x^2. And, the bias, var and mse will be estimated by repeated sampling from a training set.
 
 ## 3.1 Simple Linear Regression
 Working thru the examples in the section
