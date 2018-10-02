@@ -270,6 +270,47 @@ par(mfrow = c(2,2))
 plot(lm.fit.4)
 ```
 
+## My Special Section on Bias-Variance Trade-off
+Code is from a STAT course at U of IL/ Chapain-Urbana
+illustrate the bias-variance tradeoff through simulation by fitting models of various complexity to the "true" (but assumed unknown) function f(x): Y = x^2
+with irreducable error eps ~ N(0,.56), note sd = .75
+```{r}
+# define the true function f(x) = x^2
+f <- function(x) {
+        x^2
+}
+# generate sample data using the function below. The get_sim_data function calls f() above 
+get_sim_data = function(f, sample_size = 100) {
+  x <- runif(n = sample_size, min = 0, max = 1)
+  eps <-  rnorm(n = sample_size, mean = 0, sd = 0.75)
+  y <-  f(x) + eps
+  data.frame(x, y)
+}
+# get the sim data
+set.seed(1)
+sim_data = get_sim_data(f)
+sim_data
+# define and run 4 model of increasing complexity
+fit_0 <- lm(y ~ 1,                   data = sim_data)
+fit_1 <-  lm(y ~ poly(x, degree = 1), data = sim_data)
+fit_2 <-  lm(y ~ poly(x, degree = 2), data = sim_data)
+fit_9 <-  lm(y ~ poly(x, degree = 9), data = sim_data)
+# binding the sim and models into a tibble
+fit_out <- as.tibble(bind_cols(x = sim_data$x, y = sim_data$y, true = (sim_data$x)^2, y0 = fit_0$fitted.values, y1 = fit_1$fitted.values, y2 = fit_2$fitted.values, y9 = fit_9$fitted.values))
+```
+```{r}
+# plotting the sim data and model fits
+fit_out %>% 
+  ggplot() +
+  geom_point(aes(x,y), alpha = 0.5) + 
+    geom_line(aes(x,true), color = "black") +
+    geom_line(aes(x,y0), color = "red") +
+    geom_line(aes(x,y1), color = "green") +
+    geom_line(aes(x,y2), color = "blue", linetype = "dashed") +
+    geom_line(aes(x,y9), color = "darkgreen", linetype = "dashed")
+```
+
+
 ## 3.1 Simple Linear Regression
 Working thru the examples in the section
 
