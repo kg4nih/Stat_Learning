@@ -153,12 +153,16 @@ my_auto %>%
 ```{r}
 # using the GGally package which is an add-on to ggplot to pairwise matrix plots. The progrees = FALSE supresses bars that indicate progress in
 # producing the plots
-library(GGally)
+
 ```
+
 ```{r}
 my_auto %>%
    dplyr::select(-name) %>% 
   ggpairs(progress = FALSE)
+```
+```{r}
+library(GGally)
 ```
 
 ## Problem 10.a - 10.h
@@ -236,6 +240,9 @@ my_boston %>%
 my_boston %>% 
   filter(rm > 8) %>% 
   summary()
+```
+```{r}
+
 ```
 
 

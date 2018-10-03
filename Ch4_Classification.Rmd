@@ -1,0 +1,31 @@
+---
+title: "Ch4_Classiication_Problems"
+author: "G Smith"
+date: "October 3, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 4 Classification
+
+```{r}
+# Loading my standard work environment libraries and the ISLR library
+library(broom)
+library(gridExtra)
+library(GGally)
+library(knitr)
+library(ISLR)
+library(car)
+library(tidyverse)
+```
+
+### 4.1 Introduction to Classification Problems
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
