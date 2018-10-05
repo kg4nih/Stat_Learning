@@ -167,4 +167,21 @@ featurePlot(x = default_trn[, c("balance", "income")],
             auto.key = list(columns = 2))
             
 ```
+```{r}
+featurePlot(x = default_trn[, c("balance", "income")],
+            y = default_trn$student,
+            plot = "density",
+            scales = list(x = list(relation = "free"),
+                          y = list(relation = "free")),
+            adjust = 1.5,
+            pch = "|",
+            layout = c(2,1),
+            auto.key = list(columns = 2))
+```
+```{r}
+featurePlot(x = default_trn[, c("student", "balance", "income")], 
+            y = default_trn$default, 
+            plot = "pairs",
+            auto.key = list(columns = 2))
+```
 
