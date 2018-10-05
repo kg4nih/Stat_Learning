@@ -184,4 +184,11 @@ featurePlot(x = default_trn[, c("student", "balance", "income")],
             plot = "pairs",
             auto.key = list(columns = 2))
 ```
+```{r}
+library(ellipse)
+featurePlot(x = default_trn[, c("balance", "income")], 
+            y = default_trn$default, 
+            plot = "ellipse",
+            auto.key = list(columns = 2))
+```
 
