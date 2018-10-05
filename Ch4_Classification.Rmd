@@ -23,6 +23,7 @@ library(knitr)
 library(ISLR)
 library(car)
 library(tidyverse)
+library(caret)
 # note that dplyr select() is masked by MASS library. Need to use dplyr::select()
 ```
 
@@ -138,5 +139,32 @@ p2 <- Default %>%
   geom_density() + 
   facet_grid(default ~.)
 grid.arrange(p1,p2,ncol = 1)
+```
+Working thru the Chapter 9 in the supplemental R for Statistical Learning
+### 9.1 Visualiztion for Classification
+```{r}
+# Splitting the data into a test set and training set
+index <- seq(1:nrow(Default))
+Default <- Default %>% 
+  bind_cols(index = index, Default)
+Default <- Default %>% 
+           select(index, default, student, balance, income)
+default_idx <- sample(nrow(Default), 5000)
+default_trn <- Default[default_idx,]
+default.tst <- Default[-default_idx,]
+default_trn
+default.tst
+```
+```{r}
+featurePlot(x = default_trn[, c("balance", "income")],
+            y = default_trn$default,
+            plot = "density",
+            scales = list(x = list(relation = "free"),
+                          y = list(relation = "free")),
+            adjust = 1.5,
+            pch = "|",
+            layout = c(2,1),
+            auto.key = list(columns = 2))
+            
 ```
 
