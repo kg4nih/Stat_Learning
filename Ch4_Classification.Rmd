@@ -6,13 +6,16 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE)
 ```
 
 ## 4 Classification
 
+The response value is qualitative and takes discrete values in an "unordered" set
 ```{r}
 # Loading my standard work environment libraries and the ISLR library
+library(MASS) # LDA package
+library(class) # K-Nearest Neighbors package
 library(broom)
 library(gridExtra)
 library(GGally)
@@ -20,12 +23,120 @@ library(knitr)
 library(ISLR)
 library(car)
 library(tidyverse)
+# note that dplyr select() is masked by MASS library. Need to use dplyr::select()
 ```
 
 ### 4.1 Introduction to Classification Problems
+```{r}
+# loading the "Default" data set used in the section
+data(Default)
+Default <- as.tibble(Default)
+Default
+```
+```{r}
+# plotting Balance vs Income and Default vs Balance
+Default %>% 
+  sample_n(1500, replace = FALSE) %>%   # pulling a sample of 1500 for the plot
+  ggplot(aes(balance, income, color = default, shape = default)) +
+  geom_point()
+```
+Obseravtions: there are many fewer "Yes" compared to "No" - the prior probablity of a "Yes" is much lower than a "No"
+higher balances seem to have more "Yes" defaults. Doesn't appear to be a default pattern based on income
+```{r}
+# box plots of dafault vs balance and income
+# putting boxplots side by side
+p1 <-  Default %>% 
+  ggplot(aes(x = default, y = balance, color = default)) +
+  geom_boxplot()
+p2 <- Default %>% 
+  ggplot(aes(x = default, y = income, color = default)) +
+  geom_boxplot()
+grid.arrange(p1, p2, nrow = 1)
+```
+Observations: there appears a strong pattern between default status and balance; not so for default status and income. 
+### 4.3 Logistic Regression - Used where there are 2 Response Classes 
+```{r}
+# building my own logistic function and plotting it
+b0 <- -3.5
+b1 <- 0.1
+x <- seq(1:100)
+p <- exp(b0 + b1 * x)/(1+exp(b0 + b1 * x))
+my_log <- tibble(x = x,p = p)
+my_log
+my_log %>% 
+ggplot(aes(x,p)) +
+  geom_line()
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+```
+```{r}
+# plotting default where the predictor is qualitative - in this case student status
+Default %>% 
+  ggplot(aes(x = default, y = student, color = student)) +
+  geom_count(aes(size = stat(prop), group = student)) +
+  scale_size_area(max_size = 10)
+```
+4.3.1 The Logistic Model
+```{r}
+# logistic regression examples from the text book
+# logistic regression w/ a continous predictor
+log.fit.1 <- Default %>% 
+  glm(default ~ balance, data = ., family = "binomial")
+tidy(log.fit.1)
+```
+```{r}
+summary(log.fit.1)
+```
+### 4.3.3
+```{r}
+# logistic regression w/ a discrete predictor
+log.fit.2 <- Default %>% 
+  glm(default ~ student, family = "binomial", data = .)
+tidy(log.fit.2)
+```
+```{r}
+summary(log.fit.2)
+```
+### 4.3.4 Multiple Logistic Regression
+```{r}
+log.fit.3 <- Default %>% 
+  glm(default ~ balance + income + student, family = "binomial", data = .)
+tidy(log.fit.3)
+```
+```{r}
+summary(log.fit.3)
+```
+```{r}
+# plots of student status vs income and balance
+p1 <- Default %>% 
+      ggplot(aes(student, income, color = student)) +
+      geom_boxplot()
+p2 <- Default %>% 
+      ggplot(aes(student, balance, color = student)) +
+      geom_boxplot()
+grid.arrange(p1,p2, nrow = 1)
+```
+```{r}
+p1 <- Default %>%
+  filter(student == "Yes") %>% 
+  ggplot(aes(balance,income, color = default, shape = student)) +
+  geom_point()
+p2 <- Default %>%
+  filter(student == "No") %>% 
+  ggplot(aes(balance,income, color = default, shape = student)) +
+  geom_point()
+grid.arrange(p1,p2,ncol = 1)
+```
+```{r}
+p1 <- Default %>%
+  filter(student == "Yes") %>% 
+  ggplot(aes(balance)) +
+  geom_density() +
+  facet_grid(default ~.)
+p2 <- Default %>%
+  filter(student == "No") %>% 
+  ggplot(aes(balance)) +
+  geom_density() + 
+  facet_grid(default ~.)
+grid.arrange(p1,p2,ncol = 1)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
