@@ -22,8 +22,8 @@ library(GGally)
 library(knitr)
 library(ISLR)
 library(car)
-library(tidyverse)
 library(caret)
+library(tidyverse)
 # note that dplyr select() is masked by MASS library. Need to use dplyr::select()
 ```
 
@@ -140,15 +140,17 @@ p2 <- Default %>%
   facet_grid(default ~.)
 grid.arrange(p1,p2,ncol = 1)
 ```
-Working thru the Chapter 9 in the supplemental R for Statistical Learning
+
 ### 9.1 Visualiztion for Classification
+Working thru the Chapter 9 in the supplemental R for Statistical Learning
 ```{r}
 # Splitting the data into a test set and training set
 index <- seq(1:nrow(Default))
 Default <- Default %>% 
   bind_cols(index = index, Default)
 Default <- Default %>% 
-           select(index, default, student, balance, income)
+           dplyr::select(index, default, student, balance, income)
+Default
 default_idx <- sample(nrow(Default), 5000)
 default_trn <- Default[default_idx,]
 default.tst <- Default[-default_idx,]
@@ -190,5 +192,85 @@ featurePlot(x = default_trn[, c("balance", "income")],
             y = default_trn$default, 
             plot = "ellipse",
             auto.key = list(columns = 2))
+```
+### 9.2 A Simple Classifier
+```{r}
+# building a very simple classifier for default with default as the predictor based on eye-balling the plotts above
+# this classifier function takes x and boundary vales as inputs and assigns a 1 if above the boundary, else it assigns a 0
+simple_class <- function(x, boundary, above = 1, below = 0){
+  ifelse(x > boundary, above, below)
+}
+# now calling the function on the training and test sets
+default_trn_pred <- simple_class(x = default_trn$balance, boundary = 1400, above = "Yes", below = "No")
+head(default_trn_pred)
+sum(default_trn_pred == "Yes") # number of predicted defaults based on balance > 1400
+sum(default_trn$default == "Yes") # actual number of defaults in traing set
+
+default_tst_pred <- simple_class(x = default.tst$balance, boundary = 1400, above = "Yes", below = "No")
+head(default_tst_pred)
+sum(default_tst_pred == "Yes") # number of predicted defaults based on balance > 1400
+sum(default.tst$default == "Yes") # actual number of defaults in test set
+
+```
+### 9.3 metrics for Classification
+```{r}
+# building a cross table
+trn_tab <- table(predicted = default_trn_pred, actual = default_trn$default)
+trn_tab
+```
+```{r}
+# using the confusionMatrix() from the "caret" package. Feed it a table and specify the "positive" classification state; in this case "Yes"
+# need package "e1071" - it was not loaded automatically by "caret"
+library(e1071)
+trn_con_mat <- confusionMatrix(trn_tab, positive = "Yes")
+names(trn_con_mat)
+trn_con_mat
+
+```
+Sensitivity = True Positive Rate = TP/P = TP/(TP + FN)
+```{r}
+# calculating the Sensitivity by hand and comparing it to the confusion matrix above
+sens <- 144/(32+144)
+sens
+```
+# Specificity = True Negative Rate = TN/N = TN/(TN + FP)
+```{r}
+# calculating the Specificity by hand and comparing it to the confusion matrix above
+spe <- 4322/(4322+502)
+spe
+```
+So, how good is the simple classifier? In the training set only 0.0352 of the observations have a default status =  "Yes". This is the "Prevalance" of the positive claiification state in the set. The classification error rate is the "sum of off-diagonal"/ total observations. Or 1-Accuracy in the confusion matrix stats.
+```{r}
+prev <- (32+144)/5000
+prev
+err <- (32 + 502)/5000
+err # the error rate is 10%. In this case, a better classifer rule would be to simple classify all observations as "No." The max error rate would then be = prevalance =.0352
+```
+```{r}
+# rerunning the simple classifer w/ balance set above the max balance in the training data set to force all to "No" except for 1"
+# bulding the table and confusion matrix again
+max(default_trn$balance)
+default_trn_pred_2 <- simple_class(x = default_trn$balance, boundary = 2578, above = "Yes", below = "No")
+trn_tab_2 <- table(predicted = default_trn_pred_2, actual = default_trn$default)
+trn_tab_2
+trn_con_mat_2 <- confusionMatrix(trn_tab_2, positive = "Yes")
+trn_con_mat_2
+```
+```{r}
+err_2 <- 1 - trn_con_mat_2$overall["Accuracy"]
+err_2
+```
+This naive model has a better error rate (3.5%) that the simple classifier using balance > 1400 (10.7%)
+
+### 10 Logistic Regression
+Working thru the Chapter 10 in the supplemental R for Statistical Learning
+```{r}
+default_trn
+```
+```{r}
+# default status into 0,1 for linear regression. 
+default_trn_lm <- default_trn
+default_trn_lm %>% default_trn_lm %>% 
+                   mutate(default = if_else(default == "No,", 0), 1)  
 ```
 
