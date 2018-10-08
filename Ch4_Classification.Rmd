@@ -225,7 +225,6 @@ library(e1071)
 trn_con_mat <- confusionMatrix(trn_tab, positive = "Yes")
 names(trn_con_mat)
 trn_con_mat
-
 ```
 Sensitivity = True Positive Rate = TP/P = TP/(TP + FN)
 ```{r}
@@ -270,7 +269,122 @@ default_trn
 ```{r}
 # default status into 0,1 for linear regression. 
 default_trn_lm <- default_trn
-default_trn_lm %>% default_trn_lm %>% 
-                   mutate(default = if_else(default == "No,", 0), 1)  
+default_trn_lm <- default_trn_lm %>% 
+                   mutate(default = if_else(default == "No", 0, 1)) 
+default_trn_lm
+default_tst_lm <- default.tst
+default_tst_lm <- default_tst_lm %>% 
+                   mutate(default = if_else(default == "No", 0, 1)) 
+default_tst_lm
 ```
-
+```{r}
+# showing why linear regression doesn't work well for classification of qualitative variables
+model_lm = lm(default ~ balance, data = default_trn_lm)
+summary(model_lm)
+```
+On the face, the summary indiates that the lm is a good fit
+```{r}
+default_trn_lm %>% 
+  ggplot(aes(balance, default)) +
+  geom_hline(aes(yintercept = 0)) +
+  geom_hline(aes(yintercept = 1)) +
+  geom_hline(aes(yintercept = 0.5), linetype = 2) +
+  geom_vline(aes(xinter))
+  geom_point(color = "darkorange", shape = "|") +
+  geom_smooth(method = "lm", color = "dodgerblue", se = FALSE) +
+  geom_smooth(method = "glm", method.args = list(family = "binomial"), color = "green", se = FALSE) +
+  labs(title = "Using Linear Regression for Classification of Qualitative Variable", subtitle = "Not a Good Idea", y = "Probability of Default", x = "Credit Card Balance", caption = "Linear Regression line runs from below 0 and doesn't approach 1; Logistic Regression line between 0 & 1")
+```
+### 10.3 Logistic Regression - examples from the supplemental book
+```{r}
+# stepping thru fitting a logit model
+model_glm <- default_trn %>% 
+              glm(default ~ balance, data = ., family = "binomial") # glm can fit several "types"" of family = "binomial" fits a logit
+summary(model_glm)
+```
+```{r}
+# use predict() to return the probabilities and then classify default = Yes if pr(x) > 0.5
+model_glm_pred <- ifelse(predict(model_glm, type = "response")  > 0.5, "Yes", "No")
+train_tab_glm <- table(predicted = model_glm_pred, actual = default_trn$default)
+train_conf_glm <- confusionMatrix(train_tab_glm, positive = "Yes")
+train_conf_glm
+```
+```{r}
+# logit model error rate
+err_glm <- 1 - train_conf_glm$overall["Accuracy"]
+err_glm <- tibble(err_glm)
+err_glm
+```
+Note that on the training set that the classifier error rate (0.0262) is slighly lower that the Prevalance (0.0338), so it's a little better than classifying defauls status = "No" regardless of balance
+Sensitivity = TP/P = 50/(114+50) = 0.3049
+Specificity = TN/N = 4819/(4819+17) = .9965
+```{r}
+# lets see how the fitted model does on the test set
+model_glm_pred_2 <- ifelse(predict(model_glm, newdata =  default.tst,type = "response")  > 0.5, "Yes", "No")
+test_tab_glm <- table(predicted = model_glm_pred_2, actual = default.tst$default)
+test_conf_glm <- confusionMatrix(test_tab_glm, positive = "Yes")
+test_conf_glm
+```
+```{r}
+# logit model error rate
+err_glm_2 <- 1 - test_conf_glm$overall["Accuracy"]
+err_glm_2 <- tibble(err_glm_2)
+err_glm_2
+```
+The classifier has lower (good) metrics on the test set. This is expected since the fitted model was optimized for the training set
+```{r}
+# building function to calculate the classification error rate
+calc_class_err <- function(actual, predicted){
+  mean(actual != predicted)
+}
+calc_class_err(actual = default_trn$default, predicted = model_glm_pred)
+```
+### 10.4 ROC Curves - Sweeps thru Probability Cutoffs 
+```{r}
+# need to load the "pROC" package
+library(pROC)
+test_prob = predict(model_glm, newdata = default.tst, type = "response") # 
+test_roc = roc(default.tst$default ~ test_prob, plot = TRUE, print.auc = TRUE)
+```
+```{r}
+# use coords() to fine the "best" threshold setting for the model's cutoff probability
+coords(test_roc, x = "best", ret = "threshold", best.method = "closest.topleft")
+```
+```{r}
+# lets run the trainig and test models again w/ the new threshold set at 0.036047
+model_glm_pred <- ifelse(predict(model_glm, type = "response")  > 0.03036047, "Yes", "No")
+train_tab_glm <- table(predicted = model_glm_pred, actual = default_trn$default)
+train_conf_glm_2 <- confusionMatrix(train_tab_glm, positive = "Yes")
+train_conf_glm_2
+```
+### 10.5 - Multinomial Logistic Regression - used when the response variable has more than 3 categories
+```{r}
+data("iris")
+head(iris)
+# splitting data set into train and test
+iris_obs <- nrow((iris))
+iris_idx <- sample(iris_obs, size = trunc(0.5 * iris_obs))
+iris_trn <- iris[iris_idx,]
+iris_tst <- iris[-iris_idx,]
+iris_trn
+```
+```{r}
+# using multinom() from the nnet package
+library(nnet)
+model_multi <- iris_trn %>% 
+  multinom(Species ~ ., data = . , trace = FALSE)
+summary(model_multi)
+```
+```{r}
+# lets see how well it did on the training data
+model_multi_pred_trn <- predict(model_multi, newdata = iris_trn)
+iris_mult_trn_tbl <- table(predicted = model_multi_pred_trn, actual = iris_trn$Species)
+iris_mult_trn_tbl
+```
+```{r}
+# now run the model on the test data
+model_multi_pred_tst <- predict(model_multi, newdata = iris_tst)
+iris_mult_tst_tbl <- table(predicted = model_multi_pred_tst, actual = iris_tst$Species)
+iris_mult_tst_tbl
+```
+Not too bad - misclassified 4 out of 75
