@@ -488,6 +488,7 @@ table(predicted = iris_qda_tst_pred, actual = iris_tst$Species)
 ```
 #### 11.3 Naive Bayes - predictors are multivariate normal conditioned on the classes and the variance for each class may be different
 X|Y = k ~ N(mu_k, sigma_k^2). Note that the sigma_k^2 is the covarance Matrix for class k, and that the Xi's in all classes are not correlated - that is they are independent
+Use Naive Bayes when there are a large number of predictors with a limited sample size
 ```{r}
 library(e1071)
 iris_nb = naiveBayes(Species ~ ., data = iris_trn)
