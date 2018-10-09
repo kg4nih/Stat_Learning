@@ -363,10 +363,11 @@ data("iris")
 head(iris)
 # splitting data set into train and test
 iris_obs <- nrow((iris))
-iris_idx <- sample(iris_obs, size = trunc(0.5 * iris_obs))
+iris_idx <- sample(iris_obs, size = trunc(0.40 * iris_obs), replace = FALSE)
 iris_trn <- iris[iris_idx,]
 iris_tst <- iris[-iris_idx,]
 iris_trn
+iris_tst
 ```
 ```{r}
 # using multinom() from the nnet package
@@ -388,3 +389,124 @@ iris_mult_tst_tbl <- table(predicted = model_multi_pred_tst, actual = iris_tst$S
 iris_mult_tst_tbl
 ```
 Not too bad - misclassified 4 out of 75
+
+## Generative Models
+
+```{r}
+# doing some plots. These plots are not as easy to do in ggplot
+iris
+iris_trn %>%
+  caret::featurePlot(x = iris_trn[,c("Sepal.Length", "Sepal.Width", "Petal.Length", "Petal.Width")],
+                     y = iris_trn$Species,
+                     plot = "density",
+                     scales = list(x = list(relation = "free"),
+                                   y = list(relation = "free")),
+                     adjust = 1.5,
+                     pch = "|",
+                     layout = c(2,2),
+                     auto.key = list(columns = 3))
+  
+```
+
+```{r}
+caret::featurePlot(x = iris_trn[, c("Sepal.Length", "Sepal.Width", 
+                                    "Petal.Length", "Petal.Width")], 
+                   y = iris_trn$Species,
+                   plot = "ellipse",
+                   auto.key = list(columns = 3))
+```
+```{r}
+caret::featurePlot(x = iris_trn[, c("Sepal.Length", "Sepal.Width", 
+                                    "Petal.Length", "Petal.Width")], 
+                   y = iris_trn$Species,
+                   plot = "box",
+                   scales = list(y = list(relation = "free"),
+                                 x = list(rot = 90)),
+                   layout = c(4, 1))
+```
+```{r}
+# this is brute forcing it. 
+p1 <- iris_trn %>% 
+  ggplot(aes(Sepal.Length, Sepal.Width, color = Species)) +
+  geom_point() +
+  stat_ellipse()
+p2 <- iris_trn %>% 
+  ggplot(aes(Sepal.Length, Petal.Length, color = Species)) +
+  geom_point() +
+  stat_ellipse()
+p3 <- iris_trn %>% 
+  ggplot(aes(Sepal.Length, Petal.Width, color = Species)) +
+  geom_point() +
+  stat_ellipse()
+p4 <- iris_trn %>% 
+  ggplot(aes(Sepal.Width, Petal.Length, color = Species)) +
+  geom_point() +
+  stat_ellipse()
+p5 <- iris_trn %>% 
+  ggplot(aes(Sepal.Width, Petal.Width, color = Species)) +
+  geom_point() +
+  stat_ellipse()
+p6 <- iris_trn %>% 
+  ggplot(aes(Petal.Length, Petal.Width, color = Species)) +
+  geom_point() +
+  stat_ellipse()
+grid.arrange(p1,p2,p3,p4,p5,p6, nrow = 2)
+```
+#### 11.1 Linear Discriminant Analysis - predictors are multivariate normal conditioned on the classes and the variance for all classes is the same
+X|Y = k ~ N(mu_k, sigma^2): Note that the sigma^2 is the covarance Matrix, and that the Xi's may be correlated
+```{r}
+# fitting an LDA model to the iris training data
+iris_lda <- lda(Species~., data = iris_trn)
+iris_lda
+```
+```{r}
+# using the predict() on training and test data
+iris_lda_trn_pred <- predict(iris_lda, iris_trn)$class
+iris_lda_tst_pred <- predict(iris_lda, iris_tst)$class
+calc_class_err(actual = iris_trn$Species, predicted = iris_lda_trn_pred)
+calc_class_err(predicted = iris_lda_tst_pred, actual = iris_tst$Species)
+```
+```{r}
+table(predicted = iris_lda_tst_pred, actual = iris_tst$Species)
+```
+#### Quadratic Discriminant Analysis - predictors are multivariate normal conditioned on the classes and the variance for each class may be different
+X|Y = k ~ N(mu_k, sigma_k^2). Note that the sigma_k^2 is the covarance Matrix for class k, and that the Xi's in class k may be correlated
+```{r}
+# fitting an QDA model to the iris training data
+iris_qda <- qda(Species~., data = iris_trn)
+iris_qda
+```
+```{r}
+# using the predict() on training and test data
+iris_qda_trn_pred <- predict(iris_qda, iris_trn)$class
+iris_qda_tst_pred <- predict(iris_qda, iris_tst)$class
+calc_class_err(predicted = iris_qda_trn_pred, actual = iris_trn$Species)
+calc_class_err(predicted = iris_qda_tst_pred, actual = iris_tst$Species)
+```
+```{r}
+table(predicted = iris_qda_tst_pred, actual = iris_tst$Species)
+```
+#### 11.3 Naive Bayes - predictors are multivariate normal conditioned on the classes and the variance for each class may be different
+X|Y = k ~ N(mu_k, sigma_k^2). Note that the sigma_k^2 is the covarance Matrix for class k, and that the Xi's in all classes are not correlated - that is they are independent
+```{r}
+library(e1071)
+iris_nb = naiveBayes(Species ~ ., data = iris_trn)
+iris_nb
+```
+```{r}
+# using the predict() on traning and test data
+iris_nb_trn_pred = predict(iris_nb, iris_trn)
+iris_nb_tst_pred = predict(iris_nb, iris_tst)
+```
+
+```{r}
+calc_class_err(predicted = iris_nb_trn_pred, actual = iris_trn$Species)
+```
+```{r}
+calc_class_err(predicted = iris_nb_tst_pred, actual = iris_tst$Species)
+```
+
+```{r}
+table(predicted = iris_nb_tst_pred, actual = iris_tst$Species)
+```
+
