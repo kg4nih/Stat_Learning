@@ -510,4 +510,113 @@ calc_class_err(predicted = iris_nb_tst_pred, actual = iris_tst$Species)
 ```{r}
 table(predicted = iris_nb_tst_pred, actual = iris_tst$Species)
 ```
+#### 11.4 Discrete Inputs
 
+```{r}
+# making Pedal.Width a categorical predictor
+iris_trn_mod <- iris_trn
+iris_trn_mod <- iris_trn %>%
+                mutate(Sepal.Width = if_else(Sepal.Width > 4, "Large", if_else(Sepal.Width > 3, "Medium", "Small"))) 
+      
+iris_trn_mod
+iris_tst_mod <- iris_tst
+iris_tst_mod <- iris_tst %>%
+                mutate(Sepal.Width = if_else(Sepal.Width > 4, "Large", if_else(Sepal.Width > 3, "Medium", "Small"))) 
+      
+iris_tst_mod
+```
+```{r}
+# running naiveBayes()
+iris_trn_cat_nb <-  iris_trn_mod %>% 
+                    naiveBayes(Species ~ Sepal.Length + Sepal.Width, data = .)
+iris_trn_cat_nb
+```
+```{r}
+# using the predict() on traning and test data
+iris_nb_trn_cat_nb_pred = predict(iris_trn_cat_nb, iris_trn_mod)
+iris_nb_tst_cat_nb_pred = predict(iris_trn_cat_nb, iris_tst_mod)
+```
+```{r}
+table(predict = iris_nb_trn_cat_nb_pred, actual = iris_trn_mod$Species)
+```
+```{r}
+calc_class_err(actual =iris_trn_mod$Species, predicted = iris_nb_trn_cat_nb_pred)
+```
+
+```{r}
+table(predict = iris_nb_tst_cat_nb_pred, actual = iris_tst_mod$Species)
+```
+```{r}
+calc_class_err(actual =iris_tst_mod$Species, predicted = iris_nb_tst_cat_nb_pred)
+```
+```{r}
+# splitting the data into train and test sets. This may me the easist way
+sample_index <- sample(nrow(iris), trunc(.50 * nrow(iris)), replace = FALSE)
+iris_trn_2 <- iris %>% 
+              filter(row_number() %in% sample_index)
+iris_tst_2 <- iris %>% 
+              filter(!row_number() %in% sample_index)
+iris_tst_2
+```
+```{r}
+# an altenative way, but not recommended 
+iris_trn_3 <- iris %>% sample_frac(.5, replace = FALSE)
+iris_tst_3 <- iris %>%
+              anti_join(iris_trn_3)
+iris_tst_3
+```
+
+## Chapter 12 k-Nearest Neighbors: Non-parametric Classification
+### 12.1 Binary Classification/Outcome Variables
+```{r}
+head(Default)
+# changing student status to 0 & 1 for kNN. kNN measures distance so predictors should be numeric
+Default_knn <- Default %>% 
+               mutate(student = if_else(student == "No", 0, 1 ))
+Default_knn
+```
+```{r}
+# split the data into training and test data sets. here I'm making a 70 30 split
+Default_knn
+sample_index <- sample(nrow(Default_knn), trunc(0.7 * nrow(Default_knn), replace = FALSE))
+Default_knn_trn <- Default_knn %>% 
+                   filter(row_number() %in% sample_index)
+head(Default_knn_trn)
+Default_knn_trn <- mutate_if(Default_knn_trn,is.numeric, funs(scale(.)))
+Default_knn_trn <- Default_knn_trn %>% 
+                   select(-index)
+head(Default_knn_trn)
+Default_knn_tst <- Default_knn %>% 
+                   filter(!row_number() %in% sample_index) %>% 
+                   mutate_if(is.numeric, funs(scale(.))) %>%  
+                   select(-index)         
+Default_knn_tst
+```
+```{r}
+# I'm using trainControl() and train() from the caret package instead of the what's in the text
+ctlr <- trainControl(method = "repeatedcv", number = 10, repeats = 10) # using cross-validtion w/ 10 folds
+# fitting kNN to training set and centering and scaling the predictors, 
+Default_knn_fit <- Default_knn_trn %>% 
+                    train(default ~., data = ., method = "knn", trControl = ctlr, preProcess = c("center", "scale"), tuneLength = 20, na.action = "na.omit")
+print(Default_knn_fit) # kNN fitting results; note training() used k nearest neighbors from 5 - 43 and then used k = 31 for the final fitting
+```
+```{r}
+plot(Default_knn_fit) # plotting Accuracy vs #Neighbors
+```
+
+```{r}
+# testing the fitted model on the test data using predict()
+Default_knn_pred <- predict(Default_knn_fit, newdata = Default_knn_tst)
+# building a pred vs actual table to feed to confusionMatrix()
+Default_knn_pred_tab <- table(actual = Default_knn_tst$default, predicted = Default_knn_pred)
+Default_knn_conf <- confusionMatrix(Default_knn_pred_tab, positive = "Yes")
+Default_knn_conf
+```
+```{r}
+calc_class_err(actual = Default_knn_tst$default, predicted = Default_knn_pred)
+```
+prediction error on the test set (0.024) is higher that the prevalence of defaults = Yes (0.013). Note alos that Accuracy (0.976) is less than NIR (0.9867)!
+So, in this case kNN is worse (in terms of accuracy) than just classifying default status "No" for everyone
+```{r}
+# type II error is important in this case - want to avoid missing those that may default
+1 - Default_knn_conf$byClass["Specificity"]
