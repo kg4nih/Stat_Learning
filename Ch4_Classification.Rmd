@@ -289,7 +289,6 @@ default_trn_lm %>%
   geom_hline(aes(yintercept = 0)) +
   geom_hline(aes(yintercept = 1)) +
   geom_hline(aes(yintercept = 0.5), linetype = 2) +
-  geom_vline(aes(xinter))
   geom_point(color = "darkorange", shape = "|") +
   geom_smooth(method = "lm", color = "dodgerblue", se = FALSE) +
   geom_smooth(method = "glm", method.args = list(family = "binomial"), color = "green", se = FALSE) +
@@ -619,4 +618,40 @@ prediction error on the test set (0.024) is higher that the prevalence of defaul
 So, in this case kNN is worse (in terms of accuracy) than just classifying default status "No" for everyone
 ```{r}
 # type II error is important in this case - want to avoid missing those that may default
-1 - Default_knn_conf$byClass["Specificity"]
+typeII <- 1 - Default_knn_conf$byClass["Specificity"]
+typeII
+```
+
+#### 12.2 Categorical Data - kNN and multi-class 
+
+```{r}
+# using the iris data set, sepearting it into training and test sets and scalling both
+iris_sample <- sample(nrow(iris), trunc(0.5 * nrow(iris)), replace = FALSE)
+iris_knn_trn <- iris %>% 
+                filter(row_number() %in% iris_sample) %>% 
+                mutate_if(is.numeric, funs(scale(.)))
+iris_knn_tst <- iris %>%
+                filter(!row_number() %in% iris_sample) %>% 
+                mutate_if(is.numeric, funs(scale(.)))
+```
+```{r}
+ctlr <- trainControl(method = "repeatedcv", number = 10, repeats = 3) # using cross-validtion w/ 10 folds
+# fitting kNN to training set 
+iris_knn_fit <- iris_knn_trn %>% 
+                    train(Species ~., data = ., method = "knn", trControl = ctlr, tuneLength = 20, na.action = "na.omit")
+print(iris_knn_fit) # kNN fitting results; note training() used k nearest neighbors from 5 - 43 and then used k = 31 for the final fitting
+```
+```{r}
+plot(iris_knn_fit)
+```
+```{r}
+# running fitted model on test data
+iris_knn_pred <- predict(iris_knn_fit, newdata = iris_knn_tst)
+iris_knn_pred_tab <- table(actual = iris_knn_tst$Species, predicted = iris_knn_pred)
+iris_knn_conf <- confusionMatrix(iris_knn_pred_tab)
+iris_knn_conf
+```
+
+
+
+
