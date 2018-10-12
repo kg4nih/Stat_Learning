@@ -140,69 +140,57 @@ p2 <- Default %>%
   facet_grid(default ~.)
 grid.arrange(p1,p2,ncol = 1)
 ```
+### 4.4 Linear Discriminant Analysis (LDA) - Used when more than 2 response classes 
+multinomial Logistic Regression is also available. Use LDA when:
+* classes are well separated - LDA can be more stable
+* n is small and predictors X are approx normal in each of the classes - LDA can be more stable
+* more than 2 response classes
 
-### 4.6 Lab: Logistic Regression, LDA, QDA and kNN
-#### 4.6.1 Loading and looking at the Stock Market data
+#### 4.4.1, 4.4.2, 4.4.3
+LDA assumes that the class k density function of x f(x) is ~ normal(mu_k, sigma^2); further the variances (sigma^2) are the same for all classes
+For p-dimensional random vector X is multitivariate N(mu_k, SIGMA), where SIGMA is the covariance matrix common to all classes
+
+#### 4.4.4 Quadratic Discriminant Analysis (QDA)
+QDA relaxes the assumption that SIGMA (the covarance matrix) is the same for all k classes
+thus X ~ multivariant N(mu_k, SIGMA_k)
+
+### 4.6 Lab: Logisitc Regression, LDA, QDA, kNN
+
+#### 4.6.1 Stock Market Data
 ```{r}
-# I'm going to try and use tidyverve and caret to do this lab
 Smarket <- as.tibble(Smarket)
-summary(Smarket)
-```
-```{r}
-# plotting Smarket using ggpairs()
-ggpairs(Smarket, progress = FALSE)
-```
-```{r}
-# plotting volume by year
-Smarket %>% 
-  ggplot(aes(x = Year, y = Volume)) +
-  geom_point() + 
-  geom_smooth(method = lm)
-```
-Plot shows that on average volume has been increasing from 2001 - 2005
-```{r}
-# splitting data into training and test sets and fitting a logistic regression model using glm
-Smarket_trn <- Smarket %>% 
-              filter(Year < 2005)
+Smarket_trn <-  Smarket %>% 
+                filter(Year < 2005)
 Smarket_tst <- Smarket %>% 
                 filter(Year >= 2005)
-Smarket_log_fit <- Smarket_trn %>% 
-                    glm(Direction ~. - Year - Today, data = ., family = binomial)
+Smarket_fit <- Smarket_trn %>%  
+                train(Direction ~ Lag1 + Lag2, method = "glm", family = binomial, data = .)
+Smarket_fit
 ```
 ```{r}
-summary(Smarket_log_fit)
+Smarket_prob <- predict(Smarket_fit, newdata = Smarket_tst, type = "prob")
+Smarket_prob
 ```
 ```{r}
-# testing the fitted model on the test data using predict()
-Smarket_log_prob <- predict(Smarket_log_fit, newdata = Smarket_tst, type = "response")
-Smarket_log_prob[1:10]
-# converting probs to Direction
-Smarket_log_pred <- ifelse(Smarket_log_prob > 0.5, "Up", "Down")
-# building a pred vs actual table to feed to confusionMatrix()
-Smarket_log_pred_tab <- table(actual = Smarket_tst$Direction, predicted = Smarket_log_pred)
-Smarket_log_conf <- confusionMatrix(Smarket_log_pred_tab, positive = "Up")
-Smarket_log_conf
+Smarket_pred <- Smarket_prob %>% 
+                mutate(Direction = if_else(Up > 0.5, "Up", "Down"))
+Smarket_pred
+```
+```{r}
+Smarket_tab <- table(predicted = Smarket_pred$Direction,actual = Smarket_tst$Direction)
+Smarket_tab
+confusionMatrix(Smarket_tab, positive = "Up")
+```
+```{r}
+calc_class_err <- function(actual, predicted) {
+  mean(actual != predicted)
+}
+```
+```{r}
+calc_class_err(actual = Smarket_tst$Direction, predicted = Smarket_pred$Direction)
+```
 
-```
-```{r}
-calc_class_err(actual = Smarket_tst$Direction, predicted =  Smarket_log_pred)
-```
-```{r}
-# redoing the log model w/ Lag1 & Lag2 as predictors
-Smarket_log_fit_2 <- Smarket_trn %>% 
-                      glm(Direction ~ Lag1 + Lag2, data =.,family = binomial)
-summary(Smarket_log_fit_2)
-```
-```{r}
-Smarket_log_prob_2 <- predict(Smarket_log_fit_2, newdata = Smarket_tst, type = "response")
-Smarket_log_pred_2 <- if_else(Smarket_log_prob_2 > 0.5, "Up", "Down")
-Smarket_log_pred_tab_2 <- table(actual = Smarket_tst$Direction, predicted = Smarket_log_pred_2)
-Smarket_log_conf_2 <- confusionMatrix(Smarket_log_pred_tab_2, positive = "Up")
-Smarket_log_conf_2
-```
-```{r}
-calc_class_err(actual = Smarket_tst$Direction, predicted = Smarket_log_pred_2)
-```
+
 
 ### 9.1 Visualiztion for Classification
 Working thru the Chapter 9 in the supplemental R for Statistical Learning
@@ -315,10 +303,12 @@ max(default_trn$balance)
 default_trn_pred_2 <- simple_class(x = default_trn$balance, boundary = 2578, above = "Yes", below = "No")
 trn_tab_2 <- table(predicted = default_trn_pred_2, actual = default_trn$default)
 trn_tab_2
-
+trn_con_mat_2 <- confusionMatrix(trn_tab_2, positive = "Yes")
+trn_con_mat_2
 ```
 ```{r}
-
+err_2 <- 1 - trn_con_mat_2$overall["Accuracy"]
+err_2
 ```
 This naive model has a better error rate (3.5%) that the simple classifier using balance > 1400 (10.7%)
 
