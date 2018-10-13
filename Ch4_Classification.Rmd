@@ -155,31 +155,32 @@ QDA relaxes the assumption that SIGMA (the covarance matrix) is the same for all
 thus X ~ multivariant N(mu_k, SIGMA_k)
 
 ### 4.6 Lab: Logisitc Regression, LDA, QDA, kNN
-
+Where I can, I'm goint to use the caret package and tidyverse
 #### 4.6.1 Stock Market Data
+#### 4.6.2 Logistic Regression
 ```{r}
 Smarket <- as.tibble(Smarket)
 Smarket_trn <-  Smarket %>% 
                 filter(Year < 2005)
 Smarket_tst <- Smarket %>% 
                 filter(Year >= 2005)
-Smarket_fit <- Smarket_trn %>%  
+lm_fit <- Smarket_trn %>%  
                 train(Direction ~ Lag1 + Lag2, method = "glm", family = binomial, data = .)
-Smarket_fit
+summary(lm_fit)   
 ```
 ```{r}
-Smarket_prob <- predict(Smarket_fit, newdata = Smarket_tst, type = "prob")
-Smarket_prob
+lm_prob <- predict(lm_fit, newdata = Smarket_tst, type = "prob")
+lm_prob
 ```
 ```{r}
-Smarket_pred <- Smarket_prob %>% 
+lm_pred <- lm_prob %>% 
                 mutate(Direction = if_else(Up > 0.5, "Up", "Down"))
-Smarket_pred
+lm_pred
 ```
 ```{r}
-Smarket_tab <- table(predicted = Smarket_pred$Direction,actual = Smarket_tst$Direction)
-Smarket_tab
-confusionMatrix(Smarket_tab, positive = "Up")
+lm_tab <- table(predicted = lm_pred$Direction,actual = Smarket_tst$Direction)
+lm_tab
+confusionMatrix(lm_tab, positive = "Up")
 ```
 ```{r}
 calc_class_err <- function(actual, predicted) {
@@ -187,7 +188,44 @@ calc_class_err <- function(actual, predicted) {
 }
 ```
 ```{r}
-calc_class_err(actual = Smarket_tst$Direction, predicted = Smarket_pred$Direction)
+calc_class_err(actual = Smarket_tst$Direction, predicted = lm_pred$Direction)
+```
+#### 4.6.3 Linear Discriminant Analysis - LDA
+```{r}
+# Train and test data sets are as before in LDA. Ready to use
+lda_fit <- Smarket_trn %>% 
+          train(Direction ~ Lag1 + Lag2, method = "lda", data = .)
+names(lda_fit)
+
+```
+```{r}
+# the model info is in $finalModel. 
+lda_fit$finalModel
+```
+```{r}
+# note type = "prob" returns the posterior probabilities. You can use the to adjust the cutoff for classification
+ 
+lda_pred_prob <- predict(lda_fit, newdata = Smarket_tst, type = "prob")
+lda_pred_prob
+
+```
+```{r}
+# the max probability for a prediced Up is 0.54
+max(lda_pred_prob$Up)
+```
+
+```{r}
+# note type = "raw" returns the predicted Direction. It automatically uses a 0.5 cutoff
+lda_pred_raw <- predict(lda_fit, newdata = Smarket_tst, type = "raw")
+lda_pred_raw
+```
+```{r}
+lda_tab <- table(predicted = lda_pred_raw,actual = Smarket_tst$Direction)
+confusionMatrix(lda_tab, positive = "Up")
+# results are the same as the logistic regression fit
+```
+```{r}
+calc_class_err(predicted = lda_pred_raw,actual = Smarket_tst$Direction)
 ```
 
 
