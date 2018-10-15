@@ -202,13 +202,16 @@ names(lda_fit)
 # the model info is in $finalModel. 
 lda_fit$finalModel
 ```
+
+
 ```{r}
-# note type = "prob" returns the posterior probabilities. You can use the to adjust the cutoff for classification
- 
+# note type = "prob" returns the posterior probabilities. You can use this information to adjust the cutoff for classification like I did for the logistic model. # that is I can make the cutoff for an "Up" to greater that some given probability.
+
 lda_pred_prob <- predict(lda_fit, newdata = Smarket_tst, type = "prob")
 lda_pred_prob
 
 ```
+
 ```{r}
 # the max probability for a prediced Up is 0.54
 max(lda_pred_prob$Up)
@@ -227,8 +230,90 @@ confusionMatrix(lda_tab, positive = "Up")
 ```{r}
 calc_class_err(predicted = lda_pred_raw,actual = Smarket_tst$Direction)
 ```
-
-
+#### Quadratic Discriminant Analysis - QDA
+```{r}
+# fitting a qda to the stock market data. using the same train and test sets
+qda_fit <- Smarket_trn %>% 
+          train(Direction ~ Lag1  + Lag2, method = "qda", data = .)
+qda_fit$finalModel
+```
+```{r}
+qda_raw <- predict(qda_fit, newdata = Smarket_tst, type = "raw")
+qda_raw
+```
+```{r}
+qda_tab <- table(predicted = qda_raw, actual = Smarket_tst$Direction)
+qda_conf <- confusionMatrix(qda_tab, positive = "Up")
+qda_conf
+```
+```{r}
+calc_class_err(predicted = qda_raw, actual = Smarket_tst$Direction)
+```
+#### 4.6.5 K- Nearest Neighbors - kNN
+```{r}
+Smarket_trn
+```
+```{r}
+# I'm using trainControl() and train() from the caret package instead of the what's in the text
+ctlr <- trainControl(method = "repeatedcv", number = 10, repeats = 3) # using cross-validtion w/ 10 folds and 3 repeats
+# fitting kNN to training set and centering and scaling the predictors, 
+knn_fit <- Smarket_trn %>% 
+                    train(Direction ~ Lag1 + Lag2, data = ., method = "knn", trControl = ctlr, preProcess = c("center", "scale"), tuneLength = 20, na.action = "na.omit", metric = "Kappa")
+print(knn_fit) # kNN fitting results; note training() used k nearest neighbors from 5 - 43 and then used k = 33 for the final fitting
+```
+```{r}
+plot(knn_fit) # plotting Kappa vs #Neighbors
+```
+```{r}
+# testing the fitted model on the test data using predict()
+knn_pred <- predict(knn_fit, newdata = Caravan_tst)
+# building a pred vs actual table to feed to confusionMatrix()
+knn_pred_tab <- table(actual = Smarket_tst$Direction, predicted = knn_pred)
+knn_conf <- confusionMatrix(knn_pred_tab, positive = "Up")
+knn_conf
+```
+```{r}
+calc_class_err(actual = Smarket_tst$Direction, predicted = knn_pred)
+```
+#### 4.6.6 kNN - importance of scaling/standardizing predictors with widly varing scales (e.g. age and salary)
+```{r}
+Caravan_scaled <- Caravan %>% 
+                  mutate_if(is.numeric, funs(scale(.)))
+head(Caravan_scaled)
+```
+```{r}
+# taking a 20% sample for training
+sample_index <- sample(nrow(Caravan_scaled), trunc(.20 * nrow(Caravan_scaled)), replace = FALSE)
+head(sample_index)
+head(Caravan_scaled)
+Caravan_trn <- Caravan%>% # scaling loses the row numbering
+               filter(row_number() %in% sample_index)
+Caravan_tst <- Caravan %>% 
+                filter(!row_number() %in% sample_index)
+    ```
+    
+```{r}
+# I'm using trainControl() and train() from the caret package instead of the what's in the text
+ctlr <- trainControl(method = "repeatedcv", number = 10, repeats = 3) # using cross-validtion w/ 10 folds
+# fitting kNN to training set and centering and scaling the predictors, 
+knn_fit <- Caravan_trn %>% 
+                    train(Purchase ~ ., data = ., method = "knn", trControl = ctlr, preProcess = c("center", "scale"), tuneLength = 20, na.action = "na.omit", metric = "Kappa")
+print(knn_fit) # kNN fitting results; note training() used k nearest neighbors from 5 - 43 and then used k = 5 for the final fitting based on Kappa
+```
+```{r}
+plot(knn_fit) # plotting Kappa vs #Neighbors
+```
+```{r}
+# testing the fitted model on the test data using predict()
+knn_pred <- predict(knn_fit, newdata = Caravan_tst)
+# building a pred vs actual table to feed to confusionMatrix()
+knn_pred_tab <- table(actual = Caravan_tst$Purchase, predicted = knn_pred)
+knn_conf <- confusionMatrix(knn_pred_tab, positive = "Yes")
+knn_conf
+```
+```{r}
+calc_class_err(actual = Caravan_tst$Purchase, predicted = knn_pred)
+```
 
 ### 9.1 Visualiztion for Classification
 Working thru the Chapter 9 in the supplemental R for Statistical Learning
@@ -671,13 +756,10 @@ Default_knn_trn <- Default_knn %>%
                    filter(row_number() %in% sample_index)
 head(Default_knn_trn)
 Default_knn_trn <- mutate_if(Default_knn_trn,is.numeric, funs(scale(.)))
-Default_knn_trn <- Default_knn_trn %>% 
-                   select(-index)
 head(Default_knn_trn)
 Default_knn_tst <- Default_knn %>% 
                    filter(!row_number() %in% sample_index) %>% 
-                   mutate_if(is.numeric, funs(scale(.))) %>%  
-                   select(-index)         
+                   mutate_if(is.numeric, funs(scale(.)))
 Default_knn_tst
 ```
 ```{r}
