@@ -421,11 +421,16 @@ knn_fit <- Weekly_trn %>%
 print(knn_fit)
 ```
 ```{r}
+plot(knn_fit)
+```
+
+```{r}
 knn_pred <- predict(knn_fit, newdata = Weekly_tst, type = "raw")
 knn_tab <- table(predicted = knn_pred, actual = Weekly_tst$Direction)
 knn_conf <- confusionMatrix(knn_tab, positive = "Up")
 knn_conf
 ```
+
 logistic, LDA and QDA still outperform kNN in this case
 ### 9.1 Visualiztion for Classification
 Working thru the Chapter 9 in the supplemental R for Statistical Learning
