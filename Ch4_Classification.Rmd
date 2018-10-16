@@ -399,11 +399,34 @@ QDA does worse that logistic regression and LDA. Probably due to overfitting
 
 ##### 10g - kNN
 ```{r}
-knn_fit <- Weekly_trn %>% 
-           train(Direction ~ Lag2, method = "knn", data = .) 
+# need to use tuneGrid() to force a single k value
+ knn_fit <- Weekly_trn %>% 
+           train(Direction ~ Lag2, method = "knn", tuneGrid = data.frame(k = 1), data = .) 
 knn_fit$finalModel
 ```
-
+```{r}
+knn_pred <- predict(knn_fit, newdata = Weekly_tst, type = "raw")
+knn_tab <- table(predict = knn_pred, actual = Weekly_tst$Direction)
+knn_conf <- confusionMatrix(knn_tab, positive = "Up")
+knn_conf
+```
+```{r}
+calc_class_err(predict = knn_pred, actual = Weekly_tst$Direction)
+```
+kNN with k = 1 is the worst of the models
+```{r}
+# letting train find the best kNN 
+knn_fit <- Weekly_trn %>% 
+                    train(Direction ~ Lag2, data = ., method = "knn", trControl = ctlr, preProcess = c("center", "scale"), tuneLength = 50, na.action = "na.omit", metric = "Kappa")
+print(knn_fit)
+```
+```{r}
+knn_pred <- predict(knn_fit, newdata = Weekly_tst, type = "raw")
+knn_tab <- table(predicted = knn_pred, actual = Weekly_tst$Direction)
+knn_conf <- confusionMatrix(knn_tab, positive = "Up")
+knn_conf
+```
+logistic, LDA and QDA still outperform kNN in this case
 ### 9.1 Visualiztion for Classification
 Working thru the Chapter 9 in the supplemental R for Statistical Learning
 ```{r}
