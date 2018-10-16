@@ -255,7 +255,7 @@ Smarket_trn
 ```
 ```{r}
 # I'm using trainControl() and train() from the caret package instead of the what's in the text
-ctlr <- trainControl(method = "repeatedcv", number = 10, repeats = 3) # using cross-validtion w/ 10 folds and 3 repeats
+ctlr <- trainControl(method = "cv", number = 10) # using cross-validtion w/ 10 folds
 # fitting kNN to training set and centering and scaling the predictors, 
 knn_fit <- Smarket_trn %>% 
                     train(Direction ~ Lag1 + Lag2, data = ., method = "knn", trControl = ctlr, preProcess = c("center", "scale"), tuneLength = 20, na.action = "na.omit", metric = "Kappa")
