@@ -266,8 +266,8 @@ plot(knn_fit) # plotting Kappa vs #Neighbors
 ```
 ```{r}
 # testing the fitted model on the test data using predict()
-knn_pred <- predict(knn_fit, newdata = Caravan_tst)
 # building a pred vs actual table to feed to confusionMatrix()
+knn_pred <- predict(knn_fit, newdata = Smarket_tst, type = "raw")
 knn_pred_tab <- table(actual = Smarket_tst$Direction, predicted = knn_pred)
 knn_conf <- confusionMatrix(knn_pred_tab, positive = "Up")
 knn_conf
@@ -282,8 +282,8 @@ Caravan_scaled <- Caravan %>%
 head(Caravan_scaled)
 ```
 ```{r}
-# taking a 20% sample for training
-sample_index <- sample(nrow(Caravan_scaled), trunc(.20 * nrow(Caravan_scaled)), replace = FALSE)
+# taking a 80% sample for training
+sample_index <- sample(nrow(Caravan_scaled), trunc(.80 * nrow(Caravan_scaled)), replace = FALSE)
 head(sample_index)
 head(Caravan_scaled)
 Caravan_trn <- Caravan%>% # scaling loses the row numbering
@@ -294,11 +294,11 @@ Caravan_tst <- Caravan %>%
     
 ```{r}
 # I'm using trainControl() and train() from the caret package instead of the what's in the text
-ctlr <- trainControl(method = "repeatedcv", number = 10, repeats = 3) # using cross-validtion w/ 10 folds
+ctlr <- trainControl(method = "cv", number = 10) # using cross-validtion w/ 10 folds
 # fitting kNN to training set and centering and scaling the predictors, 
 knn_fit <- Caravan_trn %>% 
                     train(Purchase ~ ., data = ., method = "knn", trControl = ctlr, preProcess = c("center", "scale"), tuneLength = 20, na.action = "na.omit", metric = "Kappa")
-print(knn_fit) # kNN fitting results; note training() used k nearest neighbors from 5 - 43 and then used k = 5 for the final fitting based on Kappa
+print(knn_fit) # kNN fitting results; note training() used k nearest neighbors from 5 - 43 and then used k = 7 for the final fitting based on Kappa
 ```
 ```{r}
 plot(knn_fit) # plotting Kappa vs #Neighbors
@@ -307,12 +307,101 @@ plot(knn_fit) # plotting Kappa vs #Neighbors
 # testing the fitted model on the test data using predict()
 knn_pred <- predict(knn_fit, newdata = Caravan_tst)
 # building a pred vs actual table to feed to confusionMatrix()
-knn_pred_tab <- table(actual = Caravan_tst$Purchase, predicted = knn_pred)
+knn_pred_tab <- table(predicted = knn_pred, actual = Caravan_tst$Purchase)
 knn_conf <- confusionMatrix(knn_pred_tab, positive = "Yes")
 knn_conf
 ```
 ```{r}
 calc_class_err(actual = Caravan_tst$Purchase, predicted = knn_pred)
+```
+### 4.7 Exercises - Applied
+#### 10
+```{r}
+Weekly <- as.tibble(Weekly)
+Weekly
+```
+##### 10.a
+```{r}
+ggpairs(Weekly, progress = FALSE)
+```
+##### 10b
+```{r}
+log_fit <- Weekly %>% 
+          train(Direction ~. - Year - Today, method = "glm", family = binomial, data = .)
+summary(log_fit)    
+```
+none of the predictors seem signifant in the full model. 
+##### 10c
+```{r}
+log_pred <- Weekly %>%  
+            predict(log_fit, data = ., type = "raw")
+log_tab <- table(predicted = log_pred, actual = Weekly$Direction)
+log_conf <- confusionMatrix(log_tab, positive = "Up")
+log_conf
+```
+```{r}
+1 - calc_class_err(predicted = log_pred, actual = Weekly$Direction)
+```
+##### 10d - Log Regression
+```{r}
+# split the data into training and test sets
+Weekly_trn <- Weekly %>% 
+              filter(Year <= 2008)
+Weekly_tst <- Weekly %>% 
+              filter(Year > 2008)
+# log model on training set using only Lag2 as the predictor of direction
+log_fit_2 <- Weekly_trn %>% 
+            train(Direction ~ Lag2, method = "glm", family = binomial, data = .)
+summary(log_fit_2)
+```
+```{r}
+log_pred_2 <- predict(log_fit_2, newdata = Weekly_tst, type = "raw")
+log_tab_2 <- table(predicted = log_pred_2, actual = Weekly_tst$Direction)
+log_conf_2 <- confusionMatrix(log_tab_2, positive = "Up")
+log_conf_2
+```
+```{r}
+calc_class_err(predicted = log_pred_2, actual = Weekly_tst$Direction)
+```
+##### 10e - LDA
+```{r}
+lda_fit <- Weekly_trn %>% 
+           train(Direction ~ Lag2, method = "lda", data = .)
+lda_fit$finalModel # for LDA the summary is in $final$Model
+```
+```{r}
+lda_pred <- predict(lda_fit, newdata = Weekly_tst, type = "raw") # getting the classification results rather than the probs
+lda_tab <- table(predicted = lda_pred, actual = Weekly_tst$Direction)
+lda_conf <- confusionMatrix(lda_tab, positive = "Up")
+lda_conf
+```
+```{r}
+calc_class_err(predicted = lda_pred, actual = Weekly_tst$Direction)
+```
+Note logistic regression and LDA return the same results. Not surprising since it's a 2-class outcome
+
+##### 10f - QDA
+```{r}
+qda_fit <- Weekly_trn %>% 
+            train(Direction ~ Lag2, method = "qda", data = .)
+qda_fit$finalModel
+```
+```{r}
+qda_pred <- predict(qda_fit, newdata = Weekly_tst, type = "raw")
+qda_tab <- table(predicted = qda_pred, actual = Weekly_tst$Direction)
+qda_conf <- confusionMatrix(qda_tab, positive = "Up")
+qda_conf
+```
+```{r}
+calc_class_err(predicted = qda_pred, actual = Weekly_tst$Direction)
+```
+QDA does worse that logistic regression and LDA. Probably due to overfitting
+
+##### 10g - kNN
+```{r}
+knn_fit <- Weekly_trn %>% 
+           train(Direction ~ Lag2, method = "knn", data = .) 
+knn_fit$finalModel
 ```
 
 ### 9.1 Visualiztion for Classification
