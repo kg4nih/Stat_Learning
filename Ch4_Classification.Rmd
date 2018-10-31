@@ -430,8 +430,91 @@ knn_tab <- table(predicted = knn_pred, actual = Weekly_tst$Direction)
 knn_conf <- confusionMatrix(knn_tab, positive = "Up")
 knn_conf
 ```
-
 logistic, LDA and QDA still outperform kNN in this case
+
+##### 11a - Auto Mileage
+
+```{r}
+Auto <- as.tibble(Auto)
+Auto <- Auto %>% 
+        mutate(mpg01 = if_else(mpg > median(mpg), 1, 0))
+Auto
+```
+##### 11b - visuals
+```{r}
+pairs(Auto)
+```
+```{r}
+# some boxplots of mpg01 (note mpg01 is a feature w/ 2 classes) and predictors
+Auto %>% 
+  ggplot(aes(mpg01, mpg)) +
+  geom_boxplot(aes(group = mpg01))
+```
+```{r}
+Auto %>% 
+  ggplot(aes(mpg01, horsepower)) +
+  geom_boxplot(aes(group = mpg01))
+```
+```{r}
+Auto %>% 
+  ggplot(aes(mpg01, displacement)) +
+  geom_boxplot(aes(group = mpg01))
+```
+
+```{r}
+Auto %>% 
+  ggplot(aes(mpg01, weight)) +
+  geom_boxplot(aes(group = mpg01))
+```
+
+```{r}
+Auto %>% 
+  ggplot(aes(mpg01, acceleration)) +
+  geom_boxplot(aes(group = mpg01))
+```
+```{r}
+Auto %>% 
+  ggplot(aes(mpg01, origin)) +
+  geom_count()
+```
+```{r}
+Auto %>% 
+  ggplot(aes(mpg01, year)) +
+  geom_count()
+```
+
+
+##### 11c - Splitting into training and tests sets
+```{r}
+# using the caret package to split the data into training and test sets. The parameters in the call split the data 50/50 wile maintaining in class distribution for mpg01 
+trnIndex <- createDataPartition(Auto$mpg01, p = .5, list = FALSE, times = 1)
+Auto_trn <-  Auto[trnIndex,]
+Auto_trn
+Auto_tst <- Auto[-trnIndex,]
+Auto_tst
+```
+```{r}
+#using featureplot
+featurePlot(x = Auto_trn[, c("mpg", "horsepower", "weight")], 
+            y = Auto_trn$mpg01, 
+            plot = "pairs",
+            auto.key = list(columns = 2))
+```
+
+##### 11d1 - LOGISTIC; not required in the text book, but doing one anyway
+```{r}
+# log model on training set using just displacement as the predictor of mpg01
+log_fit <- Auto_trn %>% 
+           train(mpg01 ~ displacement, method = "glm", family = binomial, data = .)
+summary(log_fit)
+```
+
+```{r}
+log_fit2 <- Auto_trn %>% 
+            train(mpg01 ~ displacement + weight, method = "glm", family = binomial, data = .)
+summary(log_fit2)
+```
+
 ### 9.1 Visualiztion for Classification
 Working thru the Chapter 9 in the supplemental R for Statistical Learning
 ```{r}
