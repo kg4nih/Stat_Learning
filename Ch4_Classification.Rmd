@@ -23,8 +23,15 @@ library(knitr)
 library(ISLR)
 library(car)
 library(caret)
+library(e1071)
 library(tidyverse)
 # note that dplyr select() is masked by MASS library. Need to use dplyr::select()
+```
+```{r}
+# my own function for calculating classification error
+calc_class_err <- function(actual, predicted) {
+  mean(actual != predicted)
+}
 ```
 
 ### 4.1 Introduction to Classification Problems
@@ -435,14 +442,16 @@ logistic, LDA and QDA still outperform kNN in this case
 ##### 11a - Auto Mileage
 
 ```{r}
+# mpg01 is a binary indicator; need to make it a factor or the prediction models will treat it as numeric 
 Auto <- as.tibble(Auto)
 Auto <- Auto %>% 
-        mutate(mpg01 = if_else(mpg > median(mpg), 1, 0))
+        mutate(mpg01 = if_else(mpg > median(mpg), "1", "0"))
 Auto
 ```
 ##### 11b - visuals
 ```{r}
-pairs(Auto)
+# excluding name and mpg01
+pairs(Auto[,1:8])
 ```
 ```{r}
 # some boxplots of mpg01 (note mpg01 is a feature w/ 2 classes) and predictors
@@ -492,7 +501,9 @@ Auto_trn <-  Auto[trnIndex,]
 Auto_trn
 Auto_tst <- Auto[-trnIndex,]
 Auto_tst
+cor(Auto_trn[,1:7])
 ```
+
 ```{r}
 #using featureplot
 featurePlot(x = Auto_trn[, c("mpg", "horsepower", "weight")], 
@@ -503,18 +514,94 @@ featurePlot(x = Auto_trn[, c("mpg", "horsepower", "weight")],
 
 ##### 11d1 - LOGISTIC; not required in the text book, but doing one anyway
 ```{r}
-# log model on training set using just displacement as the predictor of mpg01
+# log model on training set using just weight as the predictor of mpg01
 log_fit <- Auto_trn %>% 
-           train(mpg01 ~ displacement, method = "glm", family = binomial, data = .)
+           train(mpg01 ~ weight, method = "glm", family = binomial, data = .)
 summary(log_fit)
 ```
 
 ```{r}
 log_fit2 <- Auto_trn %>% 
-            train(mpg01 ~ displacement + weight, method = "glm", family = binomial, data = .)
+            train(mpg01 ~ weight + acceleration, method = "glm", family = binomial, data = .)
 summary(log_fit2)
 ```
+```{r}
+log_pred <- Auto_tst %>%  
+            predict(log_fit2, data = ., type = "raw")
+log_pred
+log_tab <- table(predicted = log_pred, actual = Auto_tst$mpg01)
+log_conf <- confusionMatrix(log_tab, positive = "1")
+log_conf
+```
+```{r}
+calc_class_err(predicted = log_pred, actual = Auto_tst$mpg01)
+```
+log is not particularly good. Only about 4% better than guessing 
 
+##### 11.d2 Linear Discriminant Analysis
+```{r}
+# data is already split into a training and test set. Going to start w/ weight and acceleration as predictors
+lda_fit <- Auto_trn %>% 
+           train(mpg01 ~ weight + acceleration, method = "lda", data = .)
+lda_fit$finalModel # for LDA the summary is in $final$Model
+```
+```{r}
+lda_pred <- predict(lda_fit, newdata = Auto_tst, type = "raw") # getting the classification results rather than the probs
+lda_tab <- table(predicted = lda_pred, actual = Auto_tst$mpg01)
+lda_conf <- confusionMatrix(lda_tab, positive = "1")
+lda_conf
+```
+```{r}
+calc_class_err(predicted = lda_pred, actual = Auto_tst$mpg01)
+```
+Wow - LDA is much better than logistic using the same predictors of weight and acceleration; LDA is correct almost 89% of the time. I tried adding horsepower but it didn't improve the accuracy .
+
+##### 11e Quadratic Discriminant Analysis - QDA
+```{r}
+# QDA using weigth and acceleration as predictors of mpg01
+qda_fit <- Auto_trn %>% 
+            train(mpg01 ~ weight + acceleration, method = "qda", data = .)
+qda_fit$finalModel
+```
+```{r}
+qda_pred <- predict(qda_fit, newdata = Auto_tst, type = "raw") # getting the classification results rather than the probs
+qda_tab <- table(predicted = qda_pred, actual = Auto_tst$mpg01)
+qda_conf <- confusionMatrix(qda_tab, positive = "1")
+qda_conf
+```
+```{r}
+calc_class_err(predicted = qda_pred, actual = Auto_tst$mpg01)
+```
+QDA is a little worse than LDA using the same predictors
+
+##### kNN
+```{r}
+# for kNN - need to scale weight and acceleration since they have measurement scales whic will effect distance mesurements in kNN
+Auto_trn <- Auto_trn %>% 
+            mutate_at(vars(weight, acceleration), funs(scale(.)))
+Auto_tst <- Auto_tst %>% 
+            mutate_at(vars(weight, acceleration), funs(scale(.)))
+```
+```{r}
+# letting train find the best kNN - using the same predictors of mpg01 
+ctlr <- trainControl(method = "cv", number = 10) # using cross-validtion w/ 10 folds
+knn_fit <- Auto_trn %>% 
+                    train(mpg01 ~ weight + acceleration, data = ., method = "knn", trControl = ctlr, preProcess = c("center", "scale"), tuneLength = 50, na.action = "na.omit", metric = "Kappa")
+print(knn_fit)
+```
+```{r}
+plot(knn_fit)
+```
+```{r}
+knn_pred <- predict(knn_fit, newdata = Auto_tst, type = "raw")
+knn_tab <- table(predicted = knn_pred, actual = Auto_tst$mpg01)
+knn_conf <- confusionMatrix(knn_tab, positive = "1")
+knn_conf
+```
+```{r}
+calc_class_err(predicted = knn_pred, actual = Auto_tst$mpg01)
+```
+kNN w/ k = 5 is a little worse than LDA and QDA. Best classification model for mpg01 using weigth and acceleration is LDA w/ 89% accuracy
 ### 9.1 Visualiztion for Classification
 Working thru the Chapter 9 in the supplemental R for Statistical Learning
 ```{r}
