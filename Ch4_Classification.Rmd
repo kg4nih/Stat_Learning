@@ -512,7 +512,7 @@ featurePlot(x = Auto_trn[, c("mpg", "horsepower", "weight")],
             auto.key = list(columns = 2))
 ```
 
-##### 11d1 - LOGISTIC; not required in the text book, but doing one anyway
+##### 11f - LOGISTIC
 ```{r}
 # log model on training set using just weight as the predictor of mpg01
 log_fit <- Auto_trn %>% 
@@ -538,7 +538,7 @@ calc_class_err(predicted = log_pred, actual = Auto_tst$mpg01)
 ```
 log is not particularly good. Only about 4% better than guessing 
 
-##### 11.d2 Linear Discriminant Analysis
+##### 11d Linear Discriminant Analysis
 ```{r}
 # data is already split into a training and test set. Going to start w/ weight and acceleration as predictors
 lda_fit <- Auto_trn %>% 
@@ -574,7 +574,7 @@ calc_class_err(predicted = qda_pred, actual = Auto_tst$mpg01)
 ```
 QDA is a little worse than LDA using the same predictors
 
-##### kNN
+##### 11g - kNN
 ```{r}
 # for kNN - need to scale weight and acceleration since they have measurement scales whic will effect distance mesurements in kNN
 Auto_trn <- Auto_trn %>% 
@@ -602,6 +602,105 @@ knn_conf
 calc_class_err(predicted = knn_pred, actual = Auto_tst$mpg01)
 ```
 kNN w/ k = 5 is a little worse than LDA and QDA. Best classification model for mpg01 using weigth and acceleration is LDA w/ 89% accuracy
+
+#### 12 Writing Functions
+##### 12a
+```{r}
+Power  <- function() {
+  print(2^3) # simple function
+}
+```
+##### 12b and c
+```{r}
+Power2 <- function(x,a) {
+  print(x^a)
+}
+Power2(3,8)
+Power2(10,3)
+Power2(8,17)
+Power2(131,3)
+```
+##### 12d
+```{r}
+Power3 <- function(x,a) {
+  result <-  x^a
+  return(result)
+}
+Power3(5,2)
+```
+##### 12e
+```{r}
+test <- tibble(x = 1:10, y = Power3(x,2))
+test %>% 
+  ggplot(aes(x,y)) +
+    geom_line()
+```
+##### 12f
+```{r}
+PlotPower <- function(x,a){
+  plot <- tibble(x = x, y = Power3(x,a))
+  plot %>%
+    ggplot(aes(x,y)) +
+    geom_line()
+}
+PlotPower(1:10, 4)
+```
+#### 13 Classification Models on Boston Data Set
+##### 13a - Creating new binary class variable and exploring predictors
+```{r}
+Boston <- as_tibble(Boston)
+Boston
+Boston <- Boston %>% 
+          mutate(crim01 = if_else(crim > median(crim), "1","0"))
+Boston
+```
+```{r}
+pairs(Boston[,1:14])
+```
+```{r}
+# checking correlation - looking for likely predictors that have high correlation w/ crime rate
+cor(Boston[1:14])
+# looks like rad would be a good starting point and chas since it's relatively un-correlated w/ rad
+```
+```{r}
+# using the caret package to split the data into training and test sets. The parameters in the call split the data 50/50 wile maintaining in class distribution for mpg01 
+trnIndex <- createDataPartition(Boston$crim01, p = .5, list = FALSE, times = 1)
+Boston_trn <-  Boston[trnIndex,]
+Boston_trn
+Boston_tst <- Boston[-trnIndex,]
+Boston_tst 
+```
+
+##### 13a - Logistic Model
+```{r}
+# fitting log model using all the predictors except crim since the log model will not converge w/ it as a predictor
+log_fit <- Boston_trn %>% 
+           train(crim01 ~ . - crim, method = "glm", family = binomial, data = .)
+summary(log_fit)  
+```
+```{r}
+# running prediction on the test data and checking results
+log_pred <- knn_pred <- predict(log_fit, newdata = Boston_tst, type = "raw")
+log_tab <- table(predicted = log_pred, actual = Boston_tst$crim01)
+log_conf <- confusionMatrix(log_tab, positive = "1")
+log_conf
+```
+Wonder if a simpler model could be almost as accurate
+```{r}
+# fitting log model using just the highest significant predictors (nox & rad) from the full model
+log_fit2 <- Boston_trn %>% 
+            train(crim01 ~ nox + rad, method = "glm", family = binomial, data = .)
+summary(log_fit2)  
+```
+```{r}
+# running prediction of the simpler mode on the test data and checking results
+log_pred2 <- knn_pred <- predict(log_fit2, newdata = Boston_tst, type = "raw")
+log_tab2 <- table(predicted = log_pred2, actual = Boston_tst$crim01)
+log_conf2 <- confusionMatrix(log_tab2, positive = "1")
+log_conf2
+```
+Lost about 6% accuracy
+
 ### 9.1 Visualiztion for Classification
 Working thru the Chapter 9 in the supplemental R for Statistical Learning
 ```{r}
