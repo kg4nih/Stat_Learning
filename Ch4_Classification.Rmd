@@ -701,6 +701,61 @@ log_conf2
 ```
 Lost about 6% accuracy
 
+##### 13b LDA on Boston Data
+```{r}
+# using same training/test data. Starting w/ all the predictors except crim
+lda_fit <- Boston_trn %>% 
+           train(crim01 ~ . -crim, method = "lda", data = .)
+lda_fit$finalModel # for LDA the summary is in $final$Model
+```
+```{r}
+lda_pred <- predict(lda_fit, newdata = Boston_tst, type = "raw") # getting the classification results rather than the probs
+lda_tab <- table(predicted = lda_pred, actual = Boston_tst$crim01)
+lda_conf <- confusionMatrix(lda_tab, positive = "1")
+lda_conf
+```
+86 % accuracy w/ all the predictors. Logistic was almost 92% accurate
+
+##### 13c - QDA on the Boston Data
+
+```{r}
+qda_fit <- Boston_trn %>% 
+           train(crim01 ~ . -crim, method = "qda", data = .)
+qda_fit$finalModel # for QDA the summary is in $final$Model
+```
+```{r}
+qda_pred <- predict(qda_fit, newdata = Boston_tst, type = "raw") # getting the classification results rather than the probs
+qda_tab <- table(predicted = qda_pred, actual = Boston_tst$crim01)
+qda_conf <- confusionMatrix(qda_tab, positive = "1")
+qda_conf
+```
+QDA is a little better than LDA
+
+##### 13d - kNN on the Boston Data Set
+```{r}
+# for kNN - need to scale all predictors since they have measurement scales whic will effect distance mesurements in kNN
+Boston_trn <- Boston_trn %>% 
+            mutate_if(is.numeric, funs(scale(.)))
+Boston_tst <- Boston_tst %>% 
+            mutate_if(is.numeric, funs(scale(.)))
+```
+```{r}
+# letting train find the best kNN - using all predictors except crim 
+ctlr <- trainControl(method = "cv", number = 10) # using cross-validtion w/ 10 folds
+knn_fit <- Boston_trn %>% 
+                    train(crim01 ~ . - crim , data = ., method = "knn", trControl = ctlr, preProcess = c("center", "scale"), tuneLength = 50, na.action = "na.omit", metric = "Kappa")
+print(knn_fit)
+```
+```{r}
+plot(knn_fit)
+```
+```{r}
+knn_pred <- predict(knn_fit, newdata = Boston_tst, type = "raw")
+knn_tab <- table(predicted = knn_pred, actual = Boston_tst$crim01)
+knn_conf <- confusionMatrix(knn_tab, positive = "1")
+knn_conf
+```
+kNN w/ k = 5 is almost 90% accurate. So, logistic and kNN are better than LDA and QDA on this data set.
 ### 9.1 Visualiztion for Classification
 Working thru the Chapter 9 in the supplemental R for Statistical Learning
 ```{r}
