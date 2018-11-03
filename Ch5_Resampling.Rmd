@@ -1,0 +1,37 @@
+---
+title: "Ch5_Resampling"
+author: "G Smith"
+date: "November 3, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 5 Resampling Methods
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r echo=FALSE, warning=FALSE}
+# Loading my standard work environment libraries and the ISLR library
+library(MASS) # LDA package
+library(class) # K-Nearest Neighbors package
+library(broom)
+library(gridExtra)
+library(GGally)
+library(knitr)
+library(ISLR)
+library(car)
+library(caret)
+library(e1071)
+library(tidyverse)
+# note that dplyr select() is masked by MASS library. Need to use dplyr::select()
+# my own function for calculating classification error
+calc_class_err <- function(actual, predicted) {
+  mean(actual != predicted)
+}
+```
+
