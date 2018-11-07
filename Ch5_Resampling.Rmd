@@ -24,6 +24,7 @@ library(gridExtra)
 library(GGally)
 library(knitr)
 library(ISLR)
+library(boot)
 library(car)
 library(caret)
 library(e1071)
@@ -34,4 +35,51 @@ calc_class_err <- function(actual, predicted) {
   mean(actual != predicted)
 }
 ```
+XXX 5.3 Lab: Cross-Validation and the Bootstrap
+Working thru the lab examples
+#### 5.3.1 Validation Set Approach
+```{r}
+# libraries are already loaded
+set.seed(1)
+Auto <- as.tibble(Auto)
+Auto
+train = sample(392,196)
+lm.fit <- Auto %>% 
+          lm(mpg ~ horsepower, data = ., subset = train)
+summary(lm.fit)
+```
+```{r}
+lm.pred <- predict(lm.fit, newdata = Auto[-train,]) # running predict on the test/validation set
+mean((Auto$mpg[-train] - lm.pred)^2) # calculating MSE
+```
+
+```{r}
+# fitting polynomials 1 thru 10 
+val.error = rep(0,10) # vector of 0s to hold MSE results
+for (i in 1:10) {
+  glm.fit <- glm(mpg ~ poly(horsepower,i), data = Auto, subset = train)
+  glm.pred <- predict(glm.fit, newdata = Auto[-train,])
+  val.error[i] <-  mean((Auto$mpg[-train] - glm.pred)^2)
+}
+```
+```{r}
+val.error # minimum MSE is for poly = 6, but it's not much different than poly = 2; go w/ the simpler model
+plot(val.error, xlab = "Degreee of Poly", ylab = "MSE")
+```
+#### 5.3.2 LOOCV
+```{r}
+# same as Validation set approach - using the same training set and fitting 1 - 10 polys
+Auto.trn <- Auto[train,]
+cv.error <- rep(0,10)
+for (i in 1:10) {
+  glm.fit <- glm(mpg ~ poly(horsepower,i), data = Auto.trn)
+  cv.error[i] <- cv.glm(Auto.trn, glm.fit)$delta[1] # cv.glm does cross-validation; the default is LOOCV
+}
+```
+```{r}
+cv.error # minimum MSE is for poly = 7, but there's not a big difference between poly = 2 and poly = 7. So, go w/ the simpler model
+plot(cv.error, xlab = "Degreee of Poly", ylab = "MSE")
+```
+#### 5.3.2 k_Fold Cross-Validation
+
 
