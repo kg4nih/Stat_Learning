@@ -80,6 +80,117 @@ for (i in 1:10) {
 cv.error # minimum MSE is for poly = 7, but there's not a big difference between poly = 2 and poly = 7. So, go w/ the simpler model
 plot(cv.error, xlab = "Degreee of Poly", ylab = "MSE")
 ```
-#### 5.3.2 k_Fold Cross-Validation
+```{r}
+# Let's check the MSE for poly 1 - 10 models on the test data
+test.error <- rep(0,10)
+for (i in 1:10) {
+  glm.fit <- glm(mpg ~ poly(horsepower,i), data = Auto.trn) # fitting the models on the training data
+  glm.pred <- predict(glm.fit, newdata = Auto[-train,]) # using the test data for predictions 
+  test.error[i] <-  mean((Auto$mpg[-train] - glm.pred)^2) # checking the MSE for the models
+}
+test.error
+```
+test MSE is lowest for poly = 2 and poly = 6; 
 
+#### 5.3.3 k_Fold Cross-Validation
+```{r}
+kcv.error <- rep(0,10)
+for (i in 1:10) {
+  glm.fit <- glm(mpg ~ poly(horsepower,i), data = Auto.trn)
+  kcv.error[i] <- cv.glm(Auto.trn, glm.fit, K = 10)$delta[1] # cv.glm does cross-validation; setting K = 10 for 10 fold cross-validation
+}
+kcv.error # minimum MSE is for poly = 6, but there's not a big difference between poly = 2 and poly = 6. So, go w/ the simpler model
+plot(kcv.error, xlab = "Degreee of Poly", ylab = "MSE")
+```
 
+### 5.4 Exercises - Applied
+#### 5 - Estimating Test Error
+##### 5a - Fit logistic model
+```{r}
+set.seed(1)
+Default <- as.tibble(Default)
+Default
+log.fit <- Default %>% 
+           glm(default ~ income + balance, family = binomial, data = .)
+summary(log.fit)
+```
+##### 5b - Validation Approach 
+```{r}
+trn.index <- createDataPartition(Default$default,p = 0.5, list = FALSE, times = 1)
+default.trn <- Default[trn.index,]
+dim(default.trn)
+default.tst <- Default[-trn.index,]
+dim(default.tst)
+```
+```{r}
+log_fit <- default.trn %>% 
+            train(default ~ income + balance, method = "glm", family = binomial, data = .)
+summary(log_fit)
+```
+```{r}
+log_pred <- predict(log_fit, newdata = default.tst, type = "raw")
+log_tab <- table(predicted = log_pred, actual = default.tst$default)
+log_conf <- confusionMatrix(log_tab, positive = "Yes")
+log_conf
+```
+```{r}
+calc_class_err(predicted = log_pred, actual = default.tst$default)
+```
+```{r}
+val.error <- rep(0,100) # intializing vector to hold misclassification errpr value
+for( i in 1:100) {
+  set.seed(i) # uses a new seed for each training/test set split and builds training & test set
+  trn.index <- createDataPartition(Default$default,p = 0.5, list = FALSE, times = 1)
+  default.trn <- Default[trn.index,]
+  default.tst <- Default[-trn.index,]
+# builts log model
+  log_fit <- default.trn %>% 
+            train(default ~ income + balance, method = "glm", family = binomial, data = .)
+# builds prediction
+  log_pred <- predict(log_fit, newdata = default.tst, type = "raw")
+# captures misclassification error
+  val.error[i] <- calc_class_err(predicted = log_pred, actual = default.tst$default)
+}
+```
+```{r}
+val.error <- as.tibble(val.error)
+val.error
+ggplot(val.error) +
+  geom_density(aes(x=value))
+
+```
+```{r}
+mean(val.error$value)
+```
+```{r}
+sd(val.error$value)
+```
+```{r}
+val.error2 <- rep(0,100) # intializing vector to hold misclassification errpr value
+for( i in 1:100) {
+  set.seed(i) # uses a new seed for each training/test set split and builds training & test set
+  trn.index <- createDataPartition(Default$default,p = 0.5, list = FALSE, times = 1)
+  default.trn <- Default[trn.index,]
+  default.tst <- Default[-trn.index,]
+# builts log model
+  log_fit <- default.trn %>% 
+            train(default ~ income + balance + student, method = "glm", family = binomial, data = .)
+# builds prediction
+  log_pred <- predict(log_fit, newdata = default.tst, type = "raw")
+# captures misclassification error
+  val.error2[i] <- calc_class_err(predicted = log_pred, actual = default.tst$default)
+}
+val.error2 <- as.tibble(val.error2)
+val.error2
+ 
+ggplot(NULL) +
+  geom_density(aes(x = val.error2$value), color = "red") +
+  geom_density(aes(x = val.error$value), color = "blue") +
+  xlab("Estimated Test Error") +
+  ggtitle("Estimating Test Error using the Validation Approach") +
+  annotate("text", x = -Inf, y = Inf, hjust = -.2, vjust = 2, label = "default ~ income + balance", color = "blue") +
+  annotate("text", x = -Inf, y = Inf, hjust = -.1, vjust = 4, label = "default ~ income + balance + student", color = "red") +
+  geom_vline(aes(xintercept = mean(val.error$value)), color = "blue") +
+  geom_vline(aes(xintercept = mean(val.error2$value)), color = "red")
+```
+Estimated test error is higher when the model includes student status
