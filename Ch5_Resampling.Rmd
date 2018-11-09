@@ -194,3 +194,39 @@ ggplot(NULL) +
   geom_vline(aes(xintercept = mean(val.error2$value)), color = "red")
 ```
 Estimated test error is higher when the model includes student status
+```{r}
+B <- 10000
+N <- 50
+Xhat_1 <- replicate(B, {
+  X <- sample_n(val.error, size=N, replace = TRUE)
+  mean(X$value)
+})
+Xhat_1 <- as.tibble(Xhat_1)
+mean(Xhat_1$value)
+sd(Xhat_1$value)
+```
+```{r}
+ggplot(data = Xhat_1) +
+  geom_histogram(aes(x = value), bins = 20)
+```
+```{r}
+ggplot(data = Xhat_1) +
+  geom_qq_line(aes(sample = value)) +
+  geom_qq(aes(sample = value))
+```
+```{r}
+B <- 10000
+N <- 50
+Xhat_2 <- replicate(B, {
+  X <- sample_n(val.error2, size=N, replace = TRUE)
+  mean(X$value)
+})
+Xhat_2 <- as.tibble(Xhat_2)
+mean(Xhat_2$value)
+sd(Xhat_2$value)
+```
+```{r}
+Xhat_1_CI <- c(mean(Xhat_1$value) - qnorm(.975)*sd(Xhat_1$value),mean(Xhat_1$value) + qnorm(.975)*sd(Xhat_1$value) )
+Xhat_1_CI
+```
+
