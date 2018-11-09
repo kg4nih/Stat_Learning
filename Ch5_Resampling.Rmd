@@ -194,6 +194,7 @@ ggplot(NULL) +
   geom_vline(aes(xintercept = mean(val.error2$value)), color = "red")
 ```
 Estimated test error is higher when the model includes student status
+In the following sections I'm just playing around to see if the differences in means are statistically. 
 ```{r}
 B <- 10000
 N <- 50
@@ -229,4 +230,25 @@ sd(Xhat_2$value)
 Xhat_1_CI <- c(mean(Xhat_1$value) - qnorm(.975)*sd(Xhat_1$value),mean(Xhat_1$value) + qnorm(.975)*sd(Xhat_1$value) )
 Xhat_1_CI
 ```
+#### 6 Bootstrap to Standard Error Estimates
+##### 6a 
+```{r}
+set.seed(1)
+# using the training set
+log.fit <- default.trn %>% 
+           train(default ~ income + balance, method = "glm", family = binomial, data = .)
+summary(log.fit)
+```
+##### 6b Using Bootstrap to estimate the SE of the predictor coefficients 
+```{r}
+# building my own boot.fn() per the text book
+boot.fn <- function(data,index) {
+  return(coef(glm(default ~ income + balance, data = data, subset = index, family = binomial)))
+}
+boot.fn(Default, 1:100)
+```
+```{r}
+boot(default.trn,boot.fn,1000)
+```
+
 
