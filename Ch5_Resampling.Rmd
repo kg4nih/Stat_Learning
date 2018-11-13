@@ -250,5 +250,43 @@ boot.fn(Default, 1:100)
 ```{r}
 boot(default.trn,boot.fn,1000)
 ```
+#### 7 LOOCV
+##### 7a
+```{r}
+Weekly # looking at the tibble
+log.fit <- Weekly %>% # fitting a logistic model to all the data
+           train(Direction ~ Lag1 + Lag2, method = "glm", family = binomial, data = .)
+summary(log.fit)
+```
+##### 7b
+```{r}
+log.fit <- Weekly[-1,] %>% # fitting a logistic model to all the data except the first observation
+           train(Direction ~ Lag1 + Lag2, method = "glm", family = binomial, data = .)
+summary(log.fit)
+```
+##### 7c
+```{r}
+# predicting first observation using the LOOCV model
+  log.pred <- predict(log.fit, newdata = Weekly[1,], type = "raw")
+log.pred
+Weekly[1,]$Direction
+# captures misclassification error
+  calc_class_err(predicted = log.pred, actual = Weekly[1,]$Direction)
+```
+##### 7d 
+```{r}
+loocv.error <- rep(0,nrow(Weekly)) # building a vector to capture classification errors for LOOCV
+# a loop to do LOOCV and predicitons
+for(i in 1:nrow(Weekly)) {
+# builts log model leaving out the ith observation
+  log.fit <- Weekly[-i,]%>% 
+             train(Direction ~ Lag1 + Lag2, method = "glm", family = binomial, data = .)
+# builds prediction for the ith observation
+  log.pred <- predict(log.fit, newdata = Weekly[i,], type = "raw")
+# captures misclassification error
+  val.error[i] <- calc_class_err(predicted = log.pred, actual = Weekly[i,]$Direction)
+}
+mean(val.error)
+```
 
 
