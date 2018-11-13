@@ -284,9 +284,29 @@ for(i in 1:nrow(Weekly)) {
 # builds prediction for the ith observation
   log.pred <- predict(log.fit, newdata = Weekly[i,], type = "raw")
 # captures misclassification error
-  val.error[i] <- calc_class_err(predicted = log.pred, actual = Weekly[i,]$Direction)
+  loocv.error[i] <- calc_class_err(predicted = log.pred, actual = Weekly[i,]$Direction)
 }
-mean(val.error)
+mean(loocv.error)
+```
+```{r}
+# doing k=10 k-fold CV tp compare to LOOCV
+kfold.error <- rep(0,100) # going to fit the model to 10 training/test sets
+# need a cost function since Direction is binary
+cost <- function(Direction, c = 0) {
+  mean(abs(Direction - c) > 0.5)}
+for( i in 1:100) {
+  set.seed(i) # uses a new seed for each training/test set split and builds training & test set
+  trn.index <- createDataPartition(Weekly$Direction,p = 0.5, list = FALSE, times = 1)
+  Weekly.trn <- Weekly[trn.index,]
+  Weekly.tst <- Weekly[-trn.index,]
+# builts log model
+  log.fit <- glm(Direction ~ Lag1 + Lag2, family = binomial, data = Weekly.trn)
+  summary(log.fit)
+# 10 fold CV using cv.glm
+  kfold.error[i] <- cv.glm(Weekly.trn, log.fit, cost, K = 10)$delta[1]
+}
+mean(kfold.error)
+
 ```
 
 
