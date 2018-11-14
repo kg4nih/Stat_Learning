@@ -273,7 +273,7 @@ Weekly[1,]$Direction
 # captures misclassification error
   calc_class_err(predicted = log.pred, actual = Weekly[1,]$Direction)
 ```
-##### 7d 
+##### 7d & e
 ```{r}
 loocv.error <- rep(0,nrow(Weekly)) # building a vector to capture classification errors for LOOCV
 # a loop to do LOOCV and predicitons
@@ -307,6 +307,42 @@ for( i in 1:100) {
 }
 mean(kfold.error)
 
+```
+So, LOOCV and k-Fold about the same estimate for test error. But k-Fold is much quicked than LOOCV
+
+#### 8
+##### 8a
+```{r}
+set.seed(1)
+x <- rnorm(100)
+y <- x - 2*x^2+rnorm(100)
+sim.data <- tibble(x,y)
+sim.data
+```
+##### 8b
+```{r}
+sim.data %>% 
+  ggplot(aes(x,y)) +
+  geom_point()
+```
+##### 8c
+```{r}
+set.seed(1)
+cv.error <- rep(0,4)
+for (i in 1:4) {
+  lm.fit <- glm(y ~ poly(x , i), data = sim.data)
+  cv.error[i] <- cv.glm(sim.data, lm.fit)$delta[1]
+}
+cv.error
+```
+```{r}
+set.seed(2)
+cv.error <- rep(0,4)
+for (i in 1:4) {
+  lm.fit <- glm(y ~ poly(x , i), data = sim.data)
+  cv.error[i] <- cv.glm(sim.data, lm.fit)$delta[1]
+}
+cv.error
 ```
 
 
