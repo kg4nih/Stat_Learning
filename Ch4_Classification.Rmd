@@ -526,6 +526,14 @@ log_fit2 <- Auto_trn %>%
 summary(log_fit2)
 ```
 ```{r}
+l
+```
+
+```{r}
+calc_class_err(predicted = log_pred, actual = Auto_tst$mpg01)
+```
+log is not particularly good. Only about 4% better than guessing 
+```{r}
 log_pred <- Auto_tst %>%  
             predict(log_fit2, data = ., type = "raw")
 log_pred
@@ -533,10 +541,6 @@ log_tab <- table(predicted = log_pred, actual = Auto_tst$mpg01)
 log_conf <- confusionMatrix(log_tab, positive = "1")
 log_conf
 ```
-```{r}
-calc_class_err(predicted = log_pred, actual = Auto_tst$mpg01)
-```
-log is not particularly good. Only about 4% better than guessing 
 
 ##### 11d Linear Discriminant Analysis
 ```{r}
