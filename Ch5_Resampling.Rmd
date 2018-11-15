@@ -365,4 +365,69 @@ summary(lm.fit.3)
 ```{r}
 plot(predict(lm.fit.3), rstudent(lm.fit.3))
 ```
+#### 9 Bootstrap
+##### 9a
+```{r}
+Boston <- as.tibble(Boston)
+Boston
+mu_hat <- mean(Boston$medv)
+mu_hat
+```
+##### 9b
+```{r}
+se_hat <- sd(Boston$medv)/sqrt(nrow(Boston))
+se_hat
+```
+# building my own boot.fn() per the text book
+```{r}
+boot.fn <- function(data,index) {
+  return(sd(Boston[index,]$medv)/sqrt(sum(!is.na(Boston[index,]$medv))))
+}
+boot.fn(Boston,1:100)
+boot(Boston,boot.fn,1000)
+```
+##### 9 c & d
+```{r}
+boot.fn.2 <- function(data,index) {
+  return(mean(Boston[index,]$medv))
+}
+boot.fn.2(Boston,1:100)
+b <- boot(Boston,boot.fn.2,1000)
+boot.ci(b, conf = 0.95, type = "bca") # using boot.ci to build the 95% CI of the boot strap results
+```
+
+```{r}
+t.test(Boston$medv)
+```
+bootstrap CI for the mean is very close to the t.test CI
+##### 9e
+```{r}
+med_hat <- median(Boston$medv)
+med_hat
+```
+##### 9f
+```{r}
+boot.fn.3 <- function(data,index) {
+  return(median(Boston[index,]$medv))
+}
+boot.fn.3(Boston,1:100)
+b <- boot(Boston,boot.fn.3,1000)
+b
+boot.ci(b, conf = 0.95, type = "bca") # using boot.ci to build the 95% CI of the boot strap results
+```
+##### 9g
+```{r}
+q10_hat <- quantile(Boston$medv, probs = 0.1)
+q10_hat
+```
+##### 9h
+```{r}
+boot.fn.4 <- function(data,index) {
+  return(quantile(Boston[index,]$medv, probs = 0.10))
+}
+boot.fn.4(Boston,1:100)
+b <- boot(Boston,boot.fn.4,1000)
+b
+boot.ci(b, conf = 0.95, type = "bca") # using boot.ci to build the 95% CI of the boot strap results
+```
 
